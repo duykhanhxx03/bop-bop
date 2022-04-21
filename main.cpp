@@ -159,6 +159,167 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
 }
 #endif
 
+enum LButtonSprite
+{
+    BUTTON_SPRITE_MOUSE_OUT = 0,
+    BUTTON_SPRITE_MOUSE_OVER_MOTION = 1,
+    BUTTON_SPRITE_MOUSE_DOWN = 2,
+    BUTTON_SPRITE_MOUSE_UP = 3,
+    BUTTON_SPRITE_TOTAL = 4
+};
+
+const int BUTTON_WIDTH = 320;
+const int BUTTON_HEIGHT = 113;
+const int TOTAL_BUTTONS = 3;
+//Button
+
+class LButton
+{
+public:
+    //Initializes internal variables
+    LButton();
+
+    //Sets top left position
+    void setPosition(int x, int y);
+
+    //Handles mouse event
+    void handleEvent(SDL_Event* e);
+
+    //Shows button sprite
+    void render(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]);
+
+private:
+    //Top left position
+    SDL_Point mPosition;
+
+    //Currently used global sprite
+    LButtonSprite mCurrentSprite;
+};
+
+class gStartMenu {
+private:
+public:
+    gStartMenu() {};
+    //Start menu texture
+    LTexture StartMenuBox;
+    LTexture MenuBackground;
+    LTexture ButtonTexture;
+
+    //Button
+    LButton Start;
+    LButton Options;
+    LButton Exit;
+
+    //Clips
+    SDL_Rect StartSpriteClips[BUTTON_SPRITE_TOTAL];
+    SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
+    SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
+    void handleEvent(SDL_Event &e) {
+        Start.handleEvent(&e);
+        Options.handleEvent(&e);
+        Exit.handleEvent(&e);
+    }
+    void show() {
+        static int alpha = 0;
+        //Blur
+        if (alpha > 255) alpha = 255;
+        MenuBackground.setAlpha(alpha);
+        alpha += 5;
+
+        //Render menu background
+        MenuBackground.render(0, 0);
+        
+        //Render start menu box
+        StartMenuBox.render((SCREEN_WIDTH - StartMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - StartMenuBox.getHeight()) / 2);
+
+        //Render button
+        Start.render(ButtonTexture, StartSpriteClips);
+        Options.render(ButtonTexture, OptionsSpriteClips);
+        Exit.render(ButtonTexture, ExitSpriteClips);
+    }
+
+};
+gStartMenu START_MENU;
+LButton::LButton()
+{
+    mPosition.x = 0;
+    mPosition.y = 0;
+
+    mCurrentSprite = BUTTON_SPRITE_MOUSE_OUT;
+}
+
+void LButton::setPosition(int x, int y)
+{
+    mPosition.x = x;
+    mPosition.y = y;
+}
+
+void LButton::handleEvent(SDL_Event* e)
+{
+    //If mouse event happened
+    if (e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
+    {
+        //Get mouse position
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+
+        //Check if mouse is in button
+        bool inside = true;
+
+        //Mouse is left of the button
+        if (x < mPosition.x)
+        {
+            inside = false;
+        }
+        //Mouse is right of the button
+        else if (x > mPosition.x + BUTTON_WIDTH)
+        {
+            inside = false;
+        }
+        //Mouse above the button
+        else if (y < mPosition.y)
+        {
+            inside = false;
+        }
+        //Mouse below the button
+        else if (y > mPosition.y + BUTTON_HEIGHT)
+        {
+            inside = false;
+        }
+
+        //Mouse is outside button
+        if (!inside)
+        {
+            mCurrentSprite = BUTTON_SPRITE_MOUSE_OUT;
+        }
+        //Mouse is inside button
+        else
+        {
+            //Set mouse over sprite
+            switch (e->type)
+            {
+            case SDL_MOUSEMOTION:
+                mCurrentSprite = BUTTON_SPRITE_MOUSE_OVER_MOTION;
+                break;
+
+            case SDL_MOUSEBUTTONDOWN:
+                mCurrentSprite = BUTTON_SPRITE_MOUSE_DOWN;
+                break;
+
+            case SDL_MOUSEBUTTONUP:
+                mCurrentSprite = BUTTON_SPRITE_MOUSE_UP;
+                break;
+            }
+        }
+    }
+}
+
+void LButton::render(LTexture & gButtonSpriteSheetTexture, SDL_Rect SpriteClips[])
+{
+    //Show current button sprite
+    gButtonSpriteSheetTexture.render(mPosition.x, mPosition.y, &SpriteClips[mCurrentSprite]);
+}
+
 class LTimer
 {
 public:
@@ -297,6 +458,50 @@ bool loadMedia();
 
 void clode();
 
+bool checkCollision(SDL_Rect a, SDL_Rect b)
+{
+    //The sides of the rectangles
+    int leftA, leftB;
+    int rightA, rightB;
+    int topA, topB;
+    int bottomA, bottomB;
+
+    //Calculate the sides of rect A
+    leftA = a.x;
+    rightA = a.x + a.w;
+    topA = a.y;
+    bottomA = a.y + a.h;
+
+    //Calculate the sides of rect B
+    leftB = b.x;
+    rightB = b.x + b.w;
+    topB = b.y;
+    bottomB = b.y + b.h;
+    //If any of the sides from A are outside of B
+    if (bottomA <= topB)
+    {
+        return false;
+    }
+
+    if (topA >= bottomB)
+    {
+        return false;
+    }
+
+    if (rightA <= leftB)
+    {
+        return false;
+    }
+
+    if (leftA >= rightB)
+    {
+        return false;
+    }
+
+    //If none of the sides from A are outside B
+    return true;
+}
+
 
 class gBackground {
 public:
@@ -307,129 +512,201 @@ public:
     gBackground() {
     }
     void render() {
-        Layer1.render(0, 0);
-        Layer2.render(0, 0);
-        Layer3.render(0, 0);
+        //Render layer 1
+        static double scrollingOffset_layer1 = 0;
+        scrollingOffset_layer1-=0.1;
+        if (scrollingOffset_layer1 < -Layer1.getWidth())
+        {
+            scrollingOffset_layer1 = 0;
+        }
+        Layer1.render(scrollingOffset_layer1, 0);
+        Layer1.render(scrollingOffset_layer1 + Layer1.getWidth(), 0);
+
+        //Render layer 2
+        static double scrollingOffset_layer2 = 0;
+        scrollingOffset_layer2 -= 0.3;
+        if (scrollingOffset_layer2 < -Layer2.getWidth())
+        {
+            scrollingOffset_layer2 = 0;
+        }
+        Layer2.render(scrollingOffset_layer2, 0);
+        Layer2.render(scrollingOffset_layer2 + Layer2.getWidth(), 0);
+
+        //Render layer 3
+        static double scrollingOffset_layer3 = 0;
+        scrollingOffset_layer3 -= 0.7;
+        if (scrollingOffset_layer3 < -Layer3.getWidth())
+        {
+            scrollingOffset_layer3 = 0;
+        }
+        Layer3.render(scrollingOffset_layer3, 0);
+        Layer3.render(scrollingOffset_layer3 + Layer3.getWidth(), 0);
+
     }
 };
 gBackground bg;
 
-const int GROUND = SCREEN_HEIGHT - 200;
-const int JUMP_MAX = 270;
+const int GROUND = SCREEN_HEIGHT - 50;
+const int JUMP_MAX = 50;
 const double GRAVITY =3;
-const int RUN = 0;
-const int JUMP = 1;
-const int FALL = 2;
-const int FASTLANDING = 3;
+
+static int frame_run = 0;
+static int frame_jump = 0;
+static int frame_fall = 0;
+static int frame_fastlanding = 0;
+
+enum Rabbit_Sheet_Height {
+    RUN_SHEET_HEIGHT=184,
+    JUMP_SHEET_HEIGHT=328,
+    FALL_SHEET_HEIGHT=328,
+    FAST_LANDING_HEIGHT=328
+};
 class gCharacter {
 private:
+
     double mPosX;
     double mPosY;
 
     double mVelY;
 
     LTimer timer;
-    //jump height max
 
+    enum STATUS {
+        RUN = 0,
+        JUMP = 1,
+        FALL = 2,
+        FASTLANDING = 3
+    };
     int status;
+
+    //SDL_Rect mCollinder;
 public:
     LTexture run;
     LTexture jump_n_fall;
     gCharacter(){
-        mPosX = SCREEN_WIDTH/7.0;
-        mPosY = GROUND;
+        mPosX = 70;
+        mPosY = GROUND-RUN_SHEET_HEIGHT;
         mVelY = 0;
-
+        
         status = 0;
     };
     vector<SDL_Rect> spriteClip_run;
     vector<SDL_Rect> spriteClip_jump;
     vector<SDL_Rect> spriteClip_fall;
-    void show(SDL_Renderer *gRenderer) {
-        static int frame = 0;
-        move();
-        
-        SDL_Rect* currentClip = &spriteClip_run[frame / 25];
-        const int RUN_FRAME_SIZE = spriteClip_run.size() - 1;
-        ++frame;
-        if (frame / 25 > RUN_FRAME_SIZE) {
-            frame = 0;
-        }
-        run.render(mPosX, mPosY, currentClip);
 
-        switch (status)
-        {
-        case RUN:
-            cout << "run" << endl;
-            break;
-        case JUMP:
-            cout << "jump" << endl;
-            break;
-        case FALL:
-            cout << "fall" << endl;
-            break;
+    void show(SDL_Renderer *gRenderer) {
+
+        move();
+        if (status == RUN) {
+            SDL_Rect* currentClip = &spriteClip_run[frame_run / 30];
+            const int RUN_FRAME_SIZE = spriteClip_run.size() - 1;
+            ++frame_run;
+            if (frame_run / 30 > RUN_FRAME_SIZE) {
+                frame_run = 0;
+            }
+            run.render(mPosX, mPosY, currentClip);
         }
-    }
-    bool isOnGround() {
-        if (mPosY  == GROUND) {
-            return true;
+
+        if (status == JUMP) {
+            SDL_Rect* currentClip = &spriteClip_jump[frame_jump / 40];
+            const int JUMP_FRAME_SIZE = spriteClip_jump.size() - 1;
+            ++frame_jump;
+            if (frame_jump / 40 > JUMP_FRAME_SIZE) {
+                frame_jump = 0;
+            }
+            jump_n_fall.render(mPosX, mPosY, currentClip);
         }
-        return false;
+
+        if (status == FALL) {
+            SDL_Rect* currentClip = &spriteClip_fall[frame_fall / 30];
+            const int JUMP_FRAME_SIZE = spriteClip_fall.size() - 1;
+            ++frame_fall;
+            if (frame_fall / 30 > JUMP_FRAME_SIZE) {
+                frame_fall = 0;
+            }
+            jump_n_fall.render(mPosX, mPosY, currentClip);
+        }
+
+        if (status == FASTLANDING) {
+
+            SDL_Rect* currentClip = &spriteClip_fall[frame_fastlanding / 30];
+            const int JUMP_FRAME_SIZE = spriteClip_fall.size() - 1;
+            ++frame_fastlanding;
+            if (frame_fastlanding / 30 > JUMP_FRAME_SIZE) {
+                frame_fastlanding = 0;
+            }
+            jump_n_fall.render(mPosX, mPosY, currentClip);
+        }
     }
     void handleEvent(SDL_Event& e) {
         
         if (e.type == SDL_KEYDOWN && e.key.repeat == 0)
         {
             if (e.key.keysym.sym == SDLK_UP || e.key.keysym.sym == SDLK_SPACE) {
-                if (isOnGround()) {
+                if (status == RUN) {
                     status = JUMP;
-                    return;
+                    mPosY = GROUND-JUMP_SHEET_HEIGHT;
+                    frame_jump = 0;
                 }
             }
             if (e.key.keysym.sym == SDLK_DOWN) {
-                mVelY = 8;
-                status = FASTLANDING;
+                if (status != RUN) {
+                    mVelY = 8;
+                    status = FASTLANDING;
+                    frame_fastlanding = 0;
+               }
             }
         }
     }
     void move()
-    {
-        //FAST LANDING
-        if (status==FASTLANDING){
+    {   
+        //Show info
+        //static int pre_status = -1;
+        //if (pre_status != status) {
+
+        //     cout <<"status: " << status << endl;
+        //     cout <<"Current character height: "<< getCurrentCharHeight() << endl;
+        //     cout << "is on ground? " <<isOnGround() << endl;
+        //     cout << "current pos Y " << mPosY << endl;
+        //     //if (isOnGround()) status = 0;
+        //     cout << "--end--" << endl;
+        //     pre_status = status;
+        //}
+
+
+        //Processing
+
+        //Fast landing
+        if (status == FASTLANDING) {
             mPosY += mVelY;
 
-            //If the dot went too far up or down
-            if (mPosY > GROUND)
+            if (mPosY > GROUND - FALL_SHEET_HEIGHT)
             {
                 //Move back
-                mPosY = GROUND;
-                status = 0;
+                mPosY = GROUND - RUN_SHEET_HEIGHT;
+                status = RUN;
             }
-        }
-        //JUMP
-        if (status==JUMP && mPosY >= JUMP_MAX) {
-            if (!timer.isStarted ()) timer.start();
-            if (timer.isStarted()) { 
-                mVelY = GRAVITY;
-                mPosY -= mVelY;
-            }
-        }
-        else if (mPosY <= JUMP_MAX) { 
-            status = FALL;
-            timer.stop();
         }
 
-        if (status==FALL && mPosY<=GROUND) {
-            if (!timer.isStarted()) timer.start();
-            if (timer.isStarted()) {
+        if (status == JUMP && mPosY >= JUMP_MAX) {
+            mVelY = GRAVITY;
+            mPosY -= mVelY;
+        }
+        else if (mPosY <= JUMP_MAX) {
+            status = FALL;
+            frame_fall = 0;
+            //cout << "fall_1" << endl;
+        }
+        
+        if (status == FALL) {
+            if (mPosY  <= GROUND-FALL_SHEET_HEIGHT) {
                 mVelY = GRAVITY;
                 mPosY += mVelY;
+            //cout << "fall_2" << endl;
+            } else { 
+                mPosY = GROUND - RUN_SHEET_HEIGHT;
+                status = RUN; 
             }
-        }
-
-        if (isOnGround()) { 
-            status = RUN;
-            timer.stop();
         }
     }
 };
@@ -479,7 +756,7 @@ bool init() {
     }
     return success;
 }
-gCharacter CHARpinkmonster;
+gCharacter Rabbit;
 bool loadMedia() {
     bool success = true;
     //BG layer load
@@ -490,80 +767,108 @@ bool loadMedia() {
         printf("Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
         success = false;
     }
-    if (!bg.Layer1.loadFromFile("imgs/background/background_layer_1.png")) {
-        cout << "Load BG Layer1 that bai! "<<endl;
+    if (!START_MENU.MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
+        cout << "Load menu_bg that bai! " << endl;
         success = false;
     }
     else
     {
-        bg.Layer1.setBlendMode(SDL_BLENDMODE_BLEND);
+        START_MENU.MenuBackground.setBlendMode(SDL_BLENDMODE_BLEND);
+    }
+
+    if (!START_MENU.ButtonTexture.loadFromFile("imgs/menu/start/start_menu_button_sheet.png")) {
+        cout << "Load gStartMenu that bai! " << endl;
+        success = false;
+    }
+    else
+    {
+        START_MENU.StartSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,320,113 };
+        START_MENU.StartSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,0,320,113 };
+        START_MENU.StartSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,0,320,113 };
+        START_MENU.StartSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,0,320,113 };
+        START_MENU.Start.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 210);
+
+        START_MENU.OptionsSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,122,320,113 };
+        START_MENU.OptionsSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,122,320,113 };
+        START_MENU.OptionsSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,122,320,113 };
+        START_MENU.OptionsSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,122,320,113 };
+        START_MENU.Options.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 330);
+
+        START_MENU.ExitSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,244,320,113 };
+        START_MENU.ExitSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,244,320,113 };
+        START_MENU.ExitSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,244,320,113 };
+        START_MENU.ExitSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,244,320,113 };
+        START_MENU.Exit.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 450);
+
+    }
+    if (!START_MENU.StartMenuBox.loadFromFile("imgs/menu/start/startmenubox.png")) {
+        cout << "Load gStartMenu background that bai! " << endl;
+        success = false;
+    }
+
+    if (!bg.Layer1.loadFromFile("imgs/background/background_layer_1.png")) {
+        cout << "Load BG Layer1 that bai! "<<endl;
+        success = false;
     }
     if (!bg.Layer2.loadFromFile("imgs/background/background_layer_2.png")) {
         cout << "Load BG Layer2 that bai! " << endl;
         success = false;
     }
-    else
-    {
-        bg.Layer2.setBlendMode(SDL_BLENDMODE_BLEND);
-    }
     if (!bg.Layer3.loadFromFile("imgs/background/background_layer_3.png")) {
         cout << "Load BG Layer3 that bai! " << endl;
         success = false;
     }
-    else
-    {
-        bg.Layer3.setBlendMode(SDL_BLENDMODE_BLEND);
-    }
-
-    if (!CHARpinkmonster.run.loadFromFile("imgs/characters/Rabbit/Run.png")) {
+    if (!Rabbit.run.loadFromFile("imgs/characters/Rabbit/Run.png")) {
         cout << "Load rabbit run that bai!" << endl;
         success = false;
     }
     else
     {
-        CHARpinkmonster.spriteClip_run = {
-        {2151,19,139,132},
-        {1906,13,141,147},
-        {1667,14,120,170},
-        {1428,31,116,154},
-        {1205,28,116,129},
-        {961,17,119,125},
-        {691,21,152,161},
-        {463,25,124,160},
-        {246,39,102,145},
-        {10,36,109,148} };
-    }
-    
-    if (!CHARpinkmonster.jump_n_fall.loadFromFile("imgs/characters/Rabbit/Jump.png")) {
-        cout << "Load rabbit jump that bai!" << endl;
-        success = false;
-    }
-    else
-    {
-        CHARpinkmonster.spriteClip_jump = {
-            {0,0,150,350},
-            {214,0,150,350},
-            {454,0,150,350},
-            {681,0,150,350},
-            {898,0,150,350},
-            {1121,0,150,350},
-            {1336,0,150,350},
-            {1565,0,150,350},
-            {1794,0,150,350},
-            {2026,0,150,350},
-            //
+        Rabbit.spriteClip_run = {
+            {2156,0,227,184},
+            {1917,0,227,184},
+            {1677,0,227,184},
+            {1438,0,227,184},
+            {1198,0,227,184},
+            {958,0,227,184},
+            {719,0,227,184},
+            {480,0,227,184},
+            {240,0,227,184},
+            {0,0,227,184}
+
         };
-        CHARpinkmonster.spriteClip_fall = {
-            {2260,0,150,350},
-            {2270,0,150,350},
-            {2710,0,150,350},
-            {2939,0,150,350},
-            {3167,0,150,350},
-            {3390,0,150,350},
-            {3624,0,150,350},
-            {3839,0,150,350},
-            {4054,0,150,350},
-        };
+
+        if (!Rabbit.jump_n_fall.loadFromFile("imgs/characters/Rabbit/Jump.png")) {
+            cout << "Load rabbit jump that bai!" << endl;
+            success = false;
+        }
+        else
+        {
+            Rabbit.spriteClip_jump = {
+                //{0,0,217,328},
+                //{229,0,217,328},
+                {456,0,217,328},
+                {681,0,217,328},
+                {907,0,217,328},
+                {1133,0,217,328},
+                {1358,0,217,328},
+                {1585,0,217,328},
+                {1810,0,217,328},
+                {2036,0,217,328}  
+            };
+            Rabbit.spriteClip_fall = {
+                
+                {2262,0,217,328},
+                {2488,0,217,328},
+                {2714,0,217,328},
+                {2940,0,217,328},
+                {3166,0,217,328},
+                {3392,0,217,328},
+                {3617,0,217,328},
+                {3844,0,217,328}
+                //{4067,0,217,328}
+            };
+        }
     }
     return success;
 }
@@ -600,13 +905,26 @@ int main(int argc, char* argv[])
         {
             bool quit = false;
             SDL_Event e;
+
+            double a = 0;
+            //Set the wall
+            SDL_Rect wall;
+            wall.x = 0;
+            wall.y = GROUND;
+            wall.w = SCREEN_WIDTH;
+            wall.h = 50;
+
             while (!quit)
             {
                 while (SDL_PollEvent(&e) != 0) {
                     if (e.type == SDL_QUIT) {
                         quit = true;
                     }
-                    CHARpinkmonster.handleEvent(e);
+                    //Character handle event
+                    Rabbit.handleEvent(e);
+
+                    //Handle button
+                    //START_MENU.handleEvent(e);
                 }
                 SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
                 SDL_RenderClear(gRenderer);
@@ -614,8 +932,15 @@ int main(int argc, char* argv[])
                 //Background render
                 bg.render();
 
-                CHARpinkmonster.show(gRenderer);
+                //render wall
+                SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+                SDL_RenderDrawRect(gRenderer, &wall);
 
+                //render rabbit
+                Rabbit.show(gRenderer);
+
+                //Render start menu
+                //START_MENU.show();
                 SDL_RenderPresent(gRenderer);
             }
         }
