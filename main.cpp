@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <queue>
+#include <math.h>
 
 using namespace std;
 
@@ -502,19 +504,30 @@ bool checkCollision(SDL_Rect a, SDL_Rect b)
     return true;
 }
 
-
+//Random session
+#include <ctime>
+#include <cstdlib>
+int generateRandomNumber(const int min, const int max)
+{
+    srand(time(0));
+    // TODO: Return a random integer number between min and max
+    return rand() % (max - min + 1) + min;
+}
 class gBackground {
 public:
     LTexture Layer1;
     LTexture Layer2;
     LTexture Layer3;
+    LTexture Layer4;
+    LTexture Ground;
 
     gBackground() {
     }
-    void render() {
+    void render(int speedRender) {
         //Render layer 1
         static double scrollingOffset_layer1 = 0;
-        scrollingOffset_layer1-=0.1;
+        if (speedRender==0) scrollingOffset_layer1-=0; else
+            scrollingOffset_layer1-=1;
         if (scrollingOffset_layer1 < -Layer1.getWidth())
         {
             scrollingOffset_layer1 = 0;
@@ -524,7 +537,8 @@ public:
 
         //Render layer 2
         static double scrollingOffset_layer2 = 0;
-        scrollingOffset_layer2 -= 0.3;
+        if (speedRender == 0) scrollingOffset_layer2 -= 0; else
+            scrollingOffset_layer2 -= 1;
         if (scrollingOffset_layer2 < -Layer2.getWidth())
         {
             scrollingOffset_layer2 = 0;
@@ -534,7 +548,8 @@ public:
 
         //Render layer 3
         static double scrollingOffset_layer3 = 0;
-        scrollingOffset_layer3 -= 0.7;
+        if (speedRender == 0) scrollingOffset_layer3 -= 0; else
+            scrollingOffset_layer3 -= 1;
         if (scrollingOffset_layer3 < -Layer3.getWidth())
         {
             scrollingOffset_layer3 = 0;
@@ -542,24 +557,102 @@ public:
         Layer3.render(scrollingOffset_layer3, 0);
         Layer3.render(scrollingOffset_layer3 + Layer3.getWidth(), 0);
 
+        //Render layer 4
+        static double scrollingOffset_layer4 = 0;
+        scrollingOffset_layer4 -= speedRender;
+        if (scrollingOffset_layer4 < -Layer4.getWidth())
+        {
+            scrollingOffset_layer4 = 0;
+        }
+        Layer4.render(scrollingOffset_layer4, SCREEN_HEIGHT - 205);
+        Layer4.render(scrollingOffset_layer4 + Layer4.getWidth(), SCREEN_HEIGHT - 205);
+
+
+        //Render Ground
+        static double scrollingOffset_ground = 0;
+        scrollingOffset_ground -= speedRender;
+        if (scrollingOffset_ground < -Ground.getWidth())
+        {
+            scrollingOffset_ground = 0;
+        }
+        Ground.render(scrollingOffset_ground, SCREEN_HEIGHT - 110);
+        Ground.render(scrollingOffset_ground + Ground.getWidth(), SCREEN_HEIGHT-110);
+
     }
 };
 gBackground bg;
 
-const int GROUND = SCREEN_HEIGHT - 50;
-const int JUMP_MAX = 50;
-const double GRAVITY =3;
+const int GROUND = SCREEN_HEIGHT - 70;
+const int JUMP_MAX = 320;
+const double GRAVITY =120;
 
 static int frame_run = 0;
 static int frame_jump = 0;
 static int frame_fall = 0;
 static int frame_fastlanding = 0;
 
+//Enemy
+LTexture mShroom;
+class Shroom {
+private:
+    
+public:
+
+    LTexture* character;
+    int x;
+    Shroom() {
+        x = 0;
+        character = NULL;
+    }
+    Shroom(LTexture &texture, const int &n) {
+        character = &texture;
+        x = n;
+    }
+    void setX(const int &n) {
+        x = n;
+    }
+    int getWidth() const{
+        return character->getWidth();
+    }
+    int getHeight() const{
+        return character->getHeight();
+    }
+    int getX() const{
+        return x;
+    }
+    void setCharacter(LTexture &texture){
+        character = &texture;
+    }
+    void Free(){
+        character = NULL;
+    }
+    void render(int speedRender) {
+        mShroom.render(x, SCREEN_HEIGHT - 80 - character->getHeight());
+        x -= speedRender;
+    }
+    bool isOver(){
+        if (x <= -character->getWidth()) {
+            //Free();
+            //x = SCREEN_WIDTH;
+            return true;
+        }
+        return false;
+    }
+};
+
+bool isOverDistance(int distance, const int &x) {
+    if (SCREEN_HEIGHT - x >= distance) {
+        return true;
+    }
+    return false;
+}
+//timer
+LTimer timeJump;
 enum Rabbit_Sheet_Height {
-    RUN_SHEET_HEIGHT=184,
-    JUMP_SHEET_HEIGHT=328,
-    FALL_SHEET_HEIGHT=328,
-    FAST_LANDING_HEIGHT=328
+    RUN_SHEET_HEIGHT=160,
+    JUMP_SHEET_HEIGHT= 160,
+    FALL_SHEET_HEIGHT= 160,
+    FAST_LANDING_HEIGHT= 160
 };
 class gCharacter {
 private:
@@ -568,9 +661,7 @@ private:
     double mPosY;
 
     double mVelY;
-
-    LTimer timer;
-
+    bool isFall;
     enum STATUS {
         RUN = 0,
         JUMP = 1,
@@ -582,13 +673,16 @@ private:
     //SDL_Rect mCollinder;
 public:
     LTexture run;
-    LTexture jump_n_fall;
+    LTexture jump;
+    LTexture fall;
     gCharacter(){
-        mPosX = 70;
+        mPosX = 150;
         mPosY = GROUND-RUN_SHEET_HEIGHT;
         mVelY = 0;
         
         status = 0;
+
+        isFall = 0;
     };
     vector<SDL_Rect> spriteClip_run;
     vector<SDL_Rect> spriteClip_jump;
@@ -598,23 +692,23 @@ public:
 
         move();
         if (status == RUN) {
-            SDL_Rect* currentClip = &spriteClip_run[frame_run / 30];
+            SDL_Rect* currentClip = &spriteClip_run[frame_run / 7];
             const int RUN_FRAME_SIZE = spriteClip_run.size() - 1;
             ++frame_run;
-            if (frame_run / 30 > RUN_FRAME_SIZE) {
+            if (frame_run / 7 > RUN_FRAME_SIZE) {
                 frame_run = 0;
             }
             run.render(mPosX, mPosY, currentClip);
         }
 
         if (status == JUMP) {
-            SDL_Rect* currentClip = &spriteClip_jump[frame_jump / 40];
+            SDL_Rect* currentClip = &spriteClip_jump[frame_jump / 30];
             const int JUMP_FRAME_SIZE = spriteClip_jump.size() - 1;
             ++frame_jump;
-            if (frame_jump / 40 > JUMP_FRAME_SIZE) {
+            if (frame_jump / 30 > JUMP_FRAME_SIZE) {
                 frame_jump = 0;
             }
-            jump_n_fall.render(mPosX, mPosY, currentClip);
+            jump.render(mPosX, mPosY, currentClip);
         }
 
         if (status == FALL) {
@@ -624,18 +718,18 @@ public:
             if (frame_fall / 30 > JUMP_FRAME_SIZE) {
                 frame_fall = 0;
             }
-            jump_n_fall.render(mPosX, mPosY, currentClip);
+            fall.render(mPosX, mPosY, currentClip);
         }
 
         if (status == FASTLANDING) {
 
-            SDL_Rect* currentClip = &spriteClip_fall[frame_fastlanding / 30];
+            SDL_Rect* currentClip = &spriteClip_fall[frame_fastlanding / 8];
             const int JUMP_FRAME_SIZE = spriteClip_fall.size() - 1;
             ++frame_fastlanding;
-            if (frame_fastlanding / 30 > JUMP_FRAME_SIZE) {
+            if (frame_fastlanding / 8 > JUMP_FRAME_SIZE) {
                 frame_fastlanding = 0;
             }
-            jump_n_fall.render(mPosX, mPosY, currentClip);
+            fall.render(mPosX, mPosY, currentClip);
         }
     }
     void handleEvent(SDL_Event& e) {
@@ -647,11 +741,12 @@ public:
                     status = JUMP;
                     mPosY = GROUND-JUMP_SHEET_HEIGHT;
                     frame_jump = 0;
+                    timeJump.start();
                 }
             }
             if (e.key.keysym.sym == SDLK_DOWN) {
                 if (status != RUN) {
-                    mVelY = 8;
+                    mVelY = 18;
                     status = FASTLANDING;
                     frame_fastlanding = 0;
                }
@@ -678,34 +773,41 @@ public:
 
         //Fast landing
         if (status == FASTLANDING) {
-            mPosY += mVelY;
+            mPosY += 30;
 
             if (mPosY > GROUND - FALL_SHEET_HEIGHT)
             {
                 //Move back
                 mPosY = GROUND - RUN_SHEET_HEIGHT;
                 status = RUN;
+                isFall = false;
             }
         }
 
         if (status == JUMP && mPosY >= JUMP_MAX) {
-            mVelY = GRAVITY;
-            mPosY -= mVelY;
+            mVelY = 220;
+            double deltaTime = timeJump.getTicks() / 1000.f;
+            mPosY += - (mVelY * (deltaTime)-0.5 * 40 * (deltaTime * deltaTime));
         }
-        else if (mPosY <= JUMP_MAX) {
-            status = FALL;
+        else if (mPosY <= JUMP_MAX && isFall == false) {
             frame_fall = 0;
+            status = FALL;
+            //timeJump.stop();
+            timeJump.start();
+            isFall = true;
             //cout << "fall_1" << endl;
         }
-        
         if (status == FALL) {
             if (mPosY  <= GROUND-FALL_SHEET_HEIGHT) {
-                mVelY = GRAVITY;
-                mPosY += mVelY;
-            //cout << "fall_2" << endl;
+                mVelY = 80;
+                double deltaTime = timeJump.getTicks() / 1000.f;
+                mPosY +=mVelY * (deltaTime)+ 0.5*40 * (deltaTime * deltaTime);
+                //cout << "fall_2" << endl;
             } else { 
                 mPosY = GROUND - RUN_SHEET_HEIGHT;
-                status = RUN; 
+                status = RUN;
+                timeJump.stop();
+                isFall = false;
             }
         }
     }
@@ -731,7 +833,7 @@ bool init() {
         }
         else
         {
-            gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+            gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED| SDL_RENDERER_PRESENTVSYNC);
             if (gRenderer == NULL) {
                 cout << "Khong tao duoc renderer! " << SDL_GetError();
                 success = false;
@@ -818,6 +920,22 @@ bool loadMedia() {
         cout << "Load BG Layer3 that bai! " << endl;
         success = false;
     }
+    if (!bg.Layer4.loadFromFile("imgs/background/background_layer_4.png")) {
+        cout << "Load BG Layer4 that bai! " << endl;
+        success = false;
+    }
+    if (!bg.Ground.loadFromFile("imgs/background/ground.png")) {
+        cout << "Load Ground that bai! " << endl;
+        success = false;
+    }
+
+    //Shroom enemy mShroom
+    if (!mShroom.loadFromFile("imgs/obstacle/shroom.png")) {
+        cout << "Load shroom enemy that bai!" << endl;
+        success = false;
+    }
+
+    //rabbit
     if (!Rabbit.run.loadFromFile("imgs/characters/Rabbit/Run.png")) {
         cout << "Load rabbit run that bai!" << endl;
         success = false;
@@ -825,7 +943,7 @@ bool loadMedia() {
     else
     {
         Rabbit.spriteClip_run = {
-            {2156,0,227,184},
+            /*{2156,0,227,184},
             {1917,0,227,184},
             {1677,0,227,184},
             {1438,0,227,184},
@@ -834,42 +952,67 @@ bool loadMedia() {
             {719,0,227,184},
             {480,0,227,184},
             {240,0,227,184},
-            {0,0,227,184}
+            {0,0,227,184}*/
+
+            //Otter
+            {0,0,200,160},
+            {200,0,200,160},
+            {400,0,200,160}
 
         };
-
-        if (!Rabbit.jump_n_fall.loadFromFile("imgs/characters/Rabbit/Jump.png")) {
-            cout << "Load rabbit jump that bai!" << endl;
-            success = false;
-        }
-        else
-        {
-            Rabbit.spriteClip_jump = {
-                //{0,0,217,328},
-                //{229,0,217,328},
-                {456,0,217,328},
-                {681,0,217,328},
-                {907,0,217,328},
-                {1133,0,217,328},
-                {1358,0,217,328},
-                {1585,0,217,328},
-                {1810,0,217,328},
-                {2036,0,217,328}  
-            };
-            Rabbit.spriteClip_fall = {
-                
-                {2262,0,217,328},
-                {2488,0,217,328},
-                {2714,0,217,328},
-                {2940,0,217,328},
-                {3166,0,217,328},
-                {3392,0,217,328},
-                {3617,0,217,328},
-                {3844,0,217,328}
-                //{4067,0,217,328}
-            };
-        }
     }
+    if (!Rabbit.jump.loadFromFile("imgs/characters/Rabbit/Jump.png")) {
+        cout << "Load rabbit jump that bai!" << endl;
+        success = false;
+    }
+    else
+    {
+        Rabbit.spriteClip_jump = {
+            /*{0,0,217,328},
+            {229,0,217,328},
+            {456,0,217,328},
+            {681,0,217,328},
+            {907,0,217,328},
+            {1133,0,217,328},
+            {1358,0,217,328},
+            {1585,0,217,328},
+            {1810,0,217,328},
+            {2036,0,217,328}  */
+
+            
+            //Otter
+            {0,0,200,160},
+            {200,0,200,160},
+            {400,0,200,160},
+            {600,0,200,160}
+        };
+    }
+    if (!Rabbit.fall.loadFromFile("imgs/characters/Rabbit/land.png")) {
+        cout << "Load rabbit land that bai!" << endl;
+        success = false;
+    }
+    else
+    {
+        Rabbit.spriteClip_fall = {
+
+            /*{2262,0,217,328},
+            {2488,0,217,328},
+            {2714,0,217,328},
+            {2940,0,217,328},
+            {3166,0,217,328},
+            {3392,0,217,328},
+            {3617,0,217,328},
+            {3844,0,217,328}*/
+            //{4067,0,217,328}
+
+            //Otter
+            {0,0,200,160},
+            {200,0,200,160},
+            {400,0,200,160},
+            {600,0,200,160}
+        };
+    }
+
     return success;
 }
 
@@ -905,14 +1048,18 @@ int main(int argc, char* argv[])
         {
             bool quit = false;
             SDL_Event e;
-
+            //Queue shroom
+            //Random
+            int previousRandomNumber = 500;
+            int randomDistance[5] = { 800,500, 600, 440,700 };
+            Shroom one(mShroom, SCREEN_WIDTH), two(mShroom, SCREEN_WIDTH + 500);
+            vector <Shroom> test;
+            test.push_back(one);
+            test.push_back(two);
+            
+            int speedRender = 10;
+            
             double a = 0;
-            //Set the wall
-            SDL_Rect wall;
-            wall.x = 0;
-            wall.y = GROUND;
-            wall.w = SCREEN_WIDTH;
-            wall.h = 50;
 
             while (!quit)
             {
@@ -930,18 +1077,28 @@ int main(int argc, char* argv[])
                 SDL_RenderClear(gRenderer);
 
                 //Background render
-                bg.render();
+                bg.render(speedRender);
+                
+                //Temp random
+                for (int i = 0; i <2; i++) {
+                    if (!test[i].isOver()) {
+                            test[i].render(speedRender);
+                    }
+                    else {
 
-                //render wall
-                SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
-                SDL_RenderDrawRect(gRenderer, &wall);
+                        int index = generateRandomNumber(0, 4);
+                        int distance = randomDistance[index];
+                        test[i].setX(SCREEN_WIDTH + distance);
+                    }
+                }
 
                 //render rabbit
                 Rabbit.show(gRenderer);
-
+                
                 //Render start menu
                 //START_MENU.show();
                 SDL_RenderPresent(gRenderer);
+               
             }
         }
     }
