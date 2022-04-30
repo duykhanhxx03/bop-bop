@@ -730,21 +730,21 @@ public:
 };
 gBackground bg;
 
+static int count_run = 0;
+static int count_jump = 0;
+static int count_fall = 0;
+static int count_fastlanding = 0;
+
 const int GROUND = SCREEN_HEIGHT - 70;
 const int JUMP_MAX = 290;
 const double GRAVITY =120;
-
-static int frame_run = 0;
-static int frame_jump = 0;
-static int frame_fall = 0;
-static int frame_fastlanding = 0;
 
 //Enemy
 LTexture mShroom;
 class Shroom {
 private:
-    SDL_Rect mColliders;
-    vector <SDL_Rect> mColliders_temp;
+    vector <SDL_Rect> mColliders;
+    vector <SDL_Rect> mColliders_offset;
     const int CHAR_WIDTH = 53;
 public:
 
@@ -762,44 +762,24 @@ public:
         mPosY = SCREEN_HEIGHT - 80 - character->getHeight() + 5;
         //collider set
 
-        mColliders.x = mPosX;
-        mColliders.y = mPosY;
-        mColliders.w = 53;
-        mColliders.h = 60;
-
         //Set colliders
-        mColliders_temp.resize(21);
-        mColliders_temp = {
-            {0, 0, 17, 1},
-            {0, 0, 26, 1},
-            {0, 0, 27, 1},
-            {0, 0, 33, 1},
-            {0, 0, 38, 1},
-            {0, 0, 39, 1},
-            {0, 0, 41, 1},
-            {0, 0, 44, 1},
-            {0, 0, 45, 1},
-            {0, 0, 47, 1},
-            {0, 0, 50, 1},
-            {0, 0, 51, 2},
-            {0, 0, 53, 11},
-            {0, 0, 51, 3},
-            {0, 0, 47, 2},
-            {0, 0, 45, 1},
-            {0, 0, 41, 2},
-            {0, 0, 34, 1},
-            {0, 0, 29, 3},
-            {0, 0, 33, 7},
-            {0, 0, 35, 17}
+        mColliders.resize(21);
+        mColliders = mColliders_offset={
+            {13,0,27,3},
+            {7,3,39,3},
+            {4,6,45,3},
+            {1,9,51,3},
+            {1,12,51,2},
+            {0,14,53,10},
+            {1,24,51,3},
+            {3,27,47,3},
+            {6,30,41,3},
+            {9,33,35,26}
         };
-        shiftColliders(mColliders_temp);
+        shiftColliders(mColliders);
     }
-    SDL_Rect& getColliders()
-    {
+    vector<SDL_Rect> getColliders() {
         return mColliders;
-    }
-    vector<SDL_Rect> getCollinders_temp() {
-        return mColliders_temp;
     }
     void setX(const int &n) {
         mPosX = n;
@@ -821,12 +801,11 @@ public:
     }
     void move() {
         mPosX -= speedRender;
-        mColliders.x = mPosX+10;
-        shiftColliders(mColliders_temp);
+        shiftColliders(mColliders);
     }
     void render(int speedRender) {
-        move();
         mShroom.render(mPosX, mPosY);
+        move();
     }
     bool isOver(){
         if (mPosX <= -character->getWidth()) {
@@ -838,20 +817,16 @@ public:
     }
     void shiftColliders(vector <SDL_Rect> &Colliders)
     {
-        //The row offset
-        int r = 0;
-
         //Go through the dot's collision boxes
         for (int set = 0; set < Colliders.size(); ++set)
         {
             //Center the collision box
-            Colliders[set].x = mPosX + (CHAR_WIDTH - Colliders[set].w) / 2;
+            Colliders[set].x = mPosX + mColliders_offset[set].x;
             //cout <<"Shroom: "<< mColliders[set].x << endl;
             //Set the collision box at its row offset
-            Colliders[set].y = mPosY + r;
+            Colliders[set].y = mPosY + mColliders_offset[set].y;
 
             //Move the row offset down the height of the collision box
-            r += Colliders[set].h;
         }
     }
 };
@@ -870,12 +845,21 @@ enum Rabbit_Sheet_Height {
     FALL_SHEET_HEIGHT= 160,
     FAST_LANDING_HEIGHT= 160
 };
+const int numberOfrunClips = 3;
+const int numberOfjumpClips = 1;
+const int numberOffallClips = 1;
+const int numberOffastlandingClips = 1;
 class gCharacter {
 private:
 
     double mPosX;
     double mPosY;
     const int CHAR_WIDTH = 200;
+
+    int runPresentFrame;
+    int jumpPresentFrame;
+    int fallPresentFrame;
+    int fastlandingPresentFrame;
 
     double mVelY;
     bool isFall;
@@ -887,10 +871,18 @@ private:
     };
     int status;
     //SDL_Rect mCollinder;
-    vector<SDL_Rect> mCollidersRun[3];
-    vector<SDL_Rect> mCollidersJump[3];
-    vector<SDL_Rect> mCollidersFall[3];
-    vector<SDL_Rect> mCollidersFastLanding[3];
+
+    vector<SDL_Rect> mCollidersRun[numberOfrunClips];
+    vector<SDL_Rect> mCollidersRun_offset[numberOfrunClips];
+
+    vector<SDL_Rect> mCollidersJump[numberOfjumpClips];
+    vector<SDL_Rect> mCollidersJump_offset[numberOfjumpClips];
+
+    vector<SDL_Rect> mCollidersFall[numberOffallClips];
+    vector<SDL_Rect> mCollidersFall_offset[numberOffallClips];
+
+    vector<SDL_Rect> mCollidersFastLanding[numberOffastlandingClips];
+    vector<SDL_Rect> mCollidersFastLanding_offset[numberOffastlandingClips];
     
     vector <SDL_Rect> mColliders;
     vector <SDL_Rect> mColliders_offset;
@@ -900,83 +892,165 @@ public:
     LTexture fall;
 
     gCharacter(){
+        runPresentFrame=0;
+        jumpPresentFrame=0;
+        fallPresentFrame=0;
+        fastlandingPresentFrame=0;
+
         mPosX = 150;
         mPosY = GROUND-RUN_SHEET_HEIGHT;
         mVelY = 0;
         
         status = 0;
         isFall = false;
-        mColliders.resize(1);
         mColliders = {
-            {59,112,123,48}
+            {112,96,32,4},
+            {100,100,50,4},
+            {92,104,62,6},
+            {84,110,74,4},
+            {80,114,80,4},
+            {138,118,20,4},
+            {76,118,56,4},
+            {74,122,58,8},
+            {72,130,56,4},
+            {66,134,50,4},
+            {62,138,52,4},
+            {66,142,44,10},
+            {88,152,26,8}
         };
-        mColliders_offset = mColliders;
         //test
-        shiftColliders(mColliders);
-        //Set colliders
+
+        mCollidersRun[0] = mCollidersRun_offset[0]={
+            {60,112,123,24},
+            {127,135,23,9},
+            {118,144,22,6},
+            {112,150,16,4},
+            {60,134,47,26}
+        };
+        mCollidersRun[1] = mCollidersRun_offset[1]={
+            {81,152,21,8},
+            {66,148,104,4},
+            {66,142,104,8 },
+            {66,138,104,4},
+            {66,134,98,4},
+            {68,130,90,4},
+            {70,126,82,4},
+            {72,122,74,4},
+            {76,118,68,4},
+            {78,114,60,4},
+            {82,110,50,4},
+            {88,106,38,4},
+            {94,102,18,4}
+        };
+        mCollidersRun[2] = mCollidersRun_offset[2]={
+            {72,148,70,12},
+            {148,150,30,4},
+            {72,140,110,10},
+            {72,136,106,4},
+            {72,132,100,4},
+            {72,128,90,4},
+            {72,124,84,4},
+            {72,120,76,4},
+            {72,116,66,4},
+            {72,112,56,4},
+            {72,108,48,4},
+            {72,104,38,4},
+            {72,100,30,4}
+        };
+
+        mCollidersJump[0] = mCollidersFall[0] = mCollidersFastLanding[0] 
+                          = mCollidersJump_offset[0] = mCollidersFall_offset[0] = mCollidersFastLanding_offset[0] = {
+            {112,96,32,4},
+            {100,100,50,4},
+            {92,104,62,6},
+            {84,110,74,4},
+            {80,114,80,4},
+            {138,118,20,4},
+            {76,118,56,4},
+            {74,122,58,8},
+            {72,130,56,4},
+            {66,134,50,4},
+            {62,138,52,4},
+            {66,142,44,10},
+            {88,152,26,8}
+        };
+        shiftColliders();
     };
     vector<SDL_Rect> spriteClip_run;
     vector<SDL_Rect> spriteClip_jump;
     vector<SDL_Rect> spriteClip_fall;
 
     //use only for character
-    void shiftColliders(vector <SDL_Rect>& Colliders)
+    void shiftColliders() {
+        shiftColliders(mCollidersFastLanding, mCollidersFastLanding_offset, numberOffastlandingClips);
+        shiftColliders(mCollidersJump, mCollidersJump_offset, numberOfjumpClips);
+        shiftColliders(mCollidersFall, mCollidersFall_offset, numberOffallClips);
+        shiftColliders(mCollidersRun, mCollidersRun_offset, numberOfrunClips);
+    }
+    void shiftColliders(vector <SDL_Rect> Colliders[], vector <SDL_Rect> Colliders_offset[], const int &numberOfClips)
     {
-        //The row offset
-        int r = 112;
-        //The Collum offset 
-        int c = 59; 
         //Go through the dot's collision boxes
-        for (int set = 0; set < Colliders.size(); ++set)
+        for (int index=0; index< numberOfClips; index++)
+        for (int set = 0; set < Colliders[index].size(); ++set)
         {
             //Center the collision box
-            Colliders[set].x = mPosX + mColliders_offset[set].x;
+            Colliders[index][set].x = mPosX + Colliders_offset[index][set].x;
             //Set the collision box at its row offset
-            Colliders[set].y = mPosY + mColliders_offset[set].y;
+            Colliders[index][set].y = mPosY + Colliders_offset[index][set].y;
 
-            //Move the row offset down the height of the collision box
-            r += Colliders[set].h;
         }
     }
+    void shiftColliders(vector <SDL_Rect> &Colliders)
+    {
+        //Go through the dot's collision boxes
+            for (int set = 0; set < Colliders.size(); ++set)
+            {
+                //Center the collision box
+                Colliders[set].x = mPosX + mColliders_offset[set].x;
+                //Set the collision box at its row offset
+                Colliders[set].y = mPosY + mColliders_offset[set].y;
+
+            }
+    }
+
     void show(SDL_Renderer *gRenderer) {
 
         if (status == RUN) {
-            SDL_Rect* currentClip = &spriteClip_run[frame_run / 7];
+            runPresentFrame = count_run++/ 7;
+            SDL_Rect* currentClip = &spriteClip_run[runPresentFrame];
             const int RUN_FRAME_SIZE = spriteClip_run.size() - 1;
-            ++frame_run;
-            if (frame_run / 7 > RUN_FRAME_SIZE) {
-                frame_run = 0;
+            if (count_run/7 > RUN_FRAME_SIZE) {
+                count_run = 0;
             }
             run.render(mPosX, mPosY, currentClip);
         }
 
         if (status == JUMP) {
-            SDL_Rect* currentClip = &spriteClip_jump[frame_jump / 30];
+            jumpPresentFrame = count_jump++/ 20;
+            SDL_Rect* currentClip = &spriteClip_jump[jumpPresentFrame];
             const int JUMP_FRAME_SIZE = spriteClip_jump.size() - 1;
-            ++frame_jump;
-            if (frame_jump / 30 > JUMP_FRAME_SIZE) {
-                frame_jump = 0;
+            if (count_jump/20> JUMP_FRAME_SIZE) {
+                count_jump = 0;
             }
             jump.render(mPosX, mPosY, currentClip);
         }
 
         if (status == FALL) {
-            SDL_Rect* currentClip = &spriteClip_fall[frame_fall / 30];
-            const int JUMP_FRAME_SIZE = spriteClip_fall.size() - 1;
-            ++frame_fall;
-            if (frame_fall / 30 > JUMP_FRAME_SIZE) {
-                frame_fall = 0;
+            fallPresentFrame = count_fall++/ 7;
+            SDL_Rect* currentClip = &spriteClip_fall[fallPresentFrame];
+            const int FALL_FRAME_SIZE = spriteClip_fall.size() - 1;
+            if (count_fall/ 7 > FALL_FRAME_SIZE) {
+                count_fall = 0;
             }
             fall.render(mPosX, mPosY, currentClip);
         }
 
         if (status == FASTLANDING) {
-
-            SDL_Rect* currentClip = &spriteClip_fall[frame_fastlanding / 8];
-            const int JUMP_FRAME_SIZE = spriteClip_fall.size() - 1;
-            ++frame_fastlanding;
-            if (frame_fastlanding / 8 > JUMP_FRAME_SIZE) {
-                frame_fastlanding = 0;
+            fastlandingPresentFrame = count_fastlanding++/ 8;
+            SDL_Rect* currentClip = &spriteClip_fall[fastlandingPresentFrame];
+            const int FASTLANDING_FRAME_SIZE = spriteClip_fall.size() - 1;
+            if (count_fastlanding/ 8 > FASTLANDING_FRAME_SIZE) {
+                count_fastlanding = 0;
             }
             fall.render(mPosX, mPosY, currentClip);
         }
@@ -990,16 +1064,16 @@ public:
                 if (status == RUN) {
                     status = JUMP;
                     mPosY = GROUND-JUMP_SHEET_HEIGHT;
-                    frame_jump = 0;
+                    count_jump = 0;
                     timeJump.start();
-                    //gSound.PlayJumpSound();
+                    gSound.PlayJumpSound();
                 }
             }
             if (e.key.keysym.sym == SDLK_DOWN) {
                 if (status != RUN) {
                     mVelY = 18;
                     status = FASTLANDING;
-                    frame_fastlanding = 0;
+                    count_fastlanding = 0;
                }
             }
         }
@@ -1021,16 +1095,16 @@ public:
 
         //Processing
 
-        shiftColliders(mColliders);
+        shiftColliders();
         //Fast landing
         if (status == FASTLANDING) {
             mPosY += 30;
-            shiftColliders(mColliders);
+            shiftColliders();
             if (mPosY > GROUND - FALL_SHEET_HEIGHT)
             {
                 //Move back
                 mPosY = GROUND - RUN_SHEET_HEIGHT;
-                shiftColliders(mColliders);
+                shiftColliders();
                 status = RUN;
                 isFall = false;
             }
@@ -1040,10 +1114,10 @@ public:
             mVelY = 220;
             double deltaTime = timeJump.getTicks() / 1000.f;
             mPosY += - (mVelY * (deltaTime)-0.5 * 40 * (deltaTime * deltaTime));
-            shiftColliders(mColliders);
+            shiftColliders();
         }
         else if (mPosY <= JUMP_MAX && isFall == false) {
-            frame_fall = 0;
+            count_fall = 0;
             status = FALL;
             //timeJump.stop();
             timeJump.start();
@@ -1055,10 +1129,11 @@ public:
                 mVelY = 80;
                 double deltaTime = timeJump.getTicks() / 1000.f;
                 mPosY +=mVelY * (deltaTime)+ 0.5*40 * (deltaTime * deltaTime);
-                shiftColliders(mColliders);
+                shiftColliders();
                 //cout << "fall_2" << endl;
             } else { 
                 mPosY = GROUND - RUN_SHEET_HEIGHT;
+                shiftColliders();
                 status = RUN;
                 timeJump.stop();
                 isFall = false;
@@ -1067,7 +1142,21 @@ public:
     }
     vector <SDL_Rect> &getColliders()
     {
-        return mColliders;
+        switch (status)
+        {
+        case JUMP:
+            return mCollidersJump[jumpPresentFrame];
+            break;
+        case FALL:
+            return mCollidersFall[fallPresentFrame];
+            break;
+        case FASTLANDING:
+            return mCollidersFastLanding[fastlandingPresentFrame];
+            break;
+        default:
+            return mCollidersRun[runPresentFrame];
+            break;
+        }
     }
 };
 
@@ -1276,10 +1365,9 @@ bool loadMedia() {
     {
         Rabbit.spriteClip_jump = {
             //Otter
-            {0,0,200,160},
-            {200,0,200,160},
-            {400,0,200,160},
-            {600,0,200,160}
+            {0,0,200,160}
+            //{200,0,200,160},
+            //{400,0,200,160}
         };
     }
     if (!Rabbit.fall.loadFromFile("imgs/characters/Rabbit/land.png")) {
@@ -1290,10 +1378,9 @@ bool loadMedia() {
     {
         Rabbit.spriteClip_fall = {
             //Otter
-            {0,0,200,160},
-            {200,0,200,160},
-            {400,0,200,160},
-            {600,0,200,160}
+            {0,0,200,160}
+            //{200,0,200,160},
+            //{400,0,200,160}
         };
     }
     return success;
@@ -1332,7 +1419,7 @@ int main(int argc, char* argv[])
             bool quit = false;
             SDL_Event e;
 
-            //gSound.PlayMusic();
+            gSound.PlayMusic();
             //Random
             vector <int> randomDistance = { 100, 300, 500, 200};
             Shroom one(mShroom, SCREEN_WIDTH), two(mShroom, SCREEN_WIDTH);
@@ -1360,11 +1447,22 @@ int main(int argc, char* argv[])
 
                 //Background render
                 bg.render(speedRender);
-                
+                vector<SDL_Rect> shroomClips; vector<SDL_Rect> rect_run = Rabbit.getColliders();
                 //Temp random
-                /*for (int i = 0; i <test.size(); i++) {
+                for (int i = 0; i <test.size(); i++) {
                     if (!test[i].isOver()) {
+                            SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+                            shroomClips=test[i].getColliders();
+
                             test[i].render(speedRender);
+                            for (auto& x : shroomClips) {
+                                SDL_RenderDrawRect(gRenderer, &x);
+                            }
+                            SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+
+                            if (checkCollision(shroomClips, rect_run)) {
+                                cout << "heheh" << endl;
+                            }
                     }
                     else {
                         int index = generateRandomNumber(0, randomDistance.size()-1);
@@ -1374,27 +1472,13 @@ int main(int argc, char* argv[])
                             test[i].setX(SCREEN_WIDTH + distance);
                         }
                     }
-                }*/
-                test[0].render(10);
-                vector<SDL_Rect> rect_shroom = test[0].getCollinders_temp();
-                vector<SDL_Rect> rect_rabbit = Rabbit.getColliders();
-                
-                if (test[0].isOver()) { 
-                    test[0].setX(SCREEN_WIDTH); 
                 }
+                
+                
                 //render rabbit
                 Rabbit.show(gRenderer);
-
-                SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
-                
-                for (auto& x : rect_shroom) {
+                for (auto& x : rect_run) {
                     SDL_RenderDrawRect(gRenderer, &x);
-                }
-                for (auto& x : rect_rabbit) {
-                    SDL_RenderDrawRect(gRenderer, &x);
-                }
-                if (checkCollision(rect_shroom, rect_rabbit)) {
-                    cout << "run" << endl;
                 }
                 
                 //Render start menu
