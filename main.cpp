@@ -5,6 +5,7 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <SDL_image.h>
+#include <SDL_mixer.h>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -15,12 +16,68 @@ using namespace std;
 
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
+int speedRender = 10;
 
 SDL_Window* gWindow = NULL;
 
 SDL_Renderer* gRenderer = NULL;
 
 TTF_Font* gFont = NULL;
+
+//Sound
+class LSound {
+private:
+    Mix_Music* gBgm;
+    Mix_Chunk* gJumpSound;
+    //MIX_MAX_VOLUME=128
+    int volumeMusic = MIX_MAX_VOLUME;
+    int volumeChunk = MIX_MAX_VOLUME;
+public:
+    bool setBgm(const string &path) {
+        gBgm = Mix_LoadMUS(path.c_str());
+        return gBgm != NULL;
+    }
+    bool setJumpSound(const string& path) {
+        gJumpSound = Mix_LoadWAV(path.c_str());
+        return gJumpSound != NULL;
+    }
+    bool isPlayingMusic() {
+        return Mix_PlayingMusic();
+    }
+    bool isPausedMusic() {
+        return Mix_PausedMusic();
+    }
+    void StopMusic() {
+        Mix_HaltMusic();
+    }
+    void PlayMusic() {
+        if (!isPlayingMusic())
+            Mix_PlayMusic(gBgm, -1);
+        Mix_VolumeMusic(volumeMusic);
+    }
+    void PauseMusic() {
+        if (isPlayingMusic())
+            Mix_PauseMusic();
+    }
+    void ResumeMusic() {
+        if (isPausedMusic())
+            Mix_ResumeMusic();
+    }
+    void PlayJumpSound() {
+        Mix_PlayChannel(-1, gJumpSound, 0);
+        Mix_VolumeChunk(gJumpSound, volumeChunk);
+    }
+    void setVolumeMusic(const int& v) {
+        volumeMusic = v;
+        Mix_VolumeMusic(volumeMusic);
+    }
+    void setVolumeChunk(const int& v) {
+        volumeChunk = v;
+        Mix_VolumeChunk(gJumpSound, volumeChunk);
+    }
+
+};
+LSound gSound;
 
 class LTexture {
 public:
@@ -242,6 +299,103 @@ public:
 
 };
 gStartMenu START_MENU;
+class gPauseMenu {
+private:
+public:
+    gPauseMenu() {};
+    //Start menu texture
+    LTexture PauseMenuBox;
+    LTexture MenuBackground;
+    LTexture ButtonTexture;
+
+    //Button
+    LButton ReStart;
+    LButton Resume;
+    LButton Options;
+    LButton Exit;
+
+    //Clips
+    SDL_Rect ReStartSpriteClips[BUTTON_SPRITE_TOTAL];
+    SDL_Rect ResumeSpriteClips[BUTTON_SPRITE_TOTAL];
+    SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
+    SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
+    void handleEvent(SDL_Event& e) {
+        ReStart.handleEvent(&e);
+        Resume.handleEvent(&e);
+        Options.handleEvent(&e);
+        Exit.handleEvent(&e);
+    }
+    void show() {
+        static int alpha = 0;
+        //Blur
+        if (alpha > 255) alpha = 255;
+        MenuBackground.setAlpha(alpha);
+        alpha += 5;
+
+        //Render menu background
+        MenuBackground.render(0, 0);
+
+        //Render start menu box
+        PauseMenuBox.render((SCREEN_WIDTH - PauseMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - PauseMenuBox.getHeight()) / 2);
+
+        //Render button
+        ReStart.render(ButtonTexture, ReStartSpriteClips);
+        Resume.render(ButtonTexture, ResumeSpriteClips);
+        Options.render(ButtonTexture, OptionsSpriteClips);
+        Exit.render(ButtonTexture, ExitSpriteClips);
+    }
+
+};
+gPauseMenu PAUSE_MENU;
+
+//class gPauseMenu {
+//private:
+//public:
+//    gPauseMenu() {};
+//    //Start menu texture
+//    LTexture PauseMenuBox;
+//    LTexture MenuBackground;
+//    LTexture ButtonTexture;
+//
+//    //Button
+//    LButton ReStart;
+//    LButton Resume;
+//    LButton Options;
+//    LButton Exit;
+//
+//    //Clips
+//    SDL_Rect ReStartSpriteClips[BUTTON_SPRITE_TOTAL];
+//    SDL_Rect ResumeSpriteClips[BUTTON_SPRITE_TOTAL];
+//    SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
+//    SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
+//    void handleEvent(SDL_Event& e) {
+//        ReStart.handleEvent(&e);
+//        Resume.handleEvent(&e);
+//        Options.handleEvent(&e);
+//        Exit.handleEvent(&e);
+//    }
+//    void show() {
+//        static int alpha = 0;
+//        //Blur
+//        if (alpha > 255) alpha = 255;
+//        MenuBackground.setAlpha(alpha);
+//        alpha += 5;
+//
+//        //Render menu background
+//        MenuBackground.render(0, 0);
+//
+//        //Render start menu box
+//        PauseMenuBox.render((SCREEN_WIDTH - PauseMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - PauseMenuBox.getHeight()) / 2);
+//
+//        //Render button
+//        ReStart.render(ButtonTexture, ReStartSpriteClips);
+//        Resume.render(ButtonTexture, ResumeSpriteClips);
+//        Options.render(ButtonTexture, OptionsSpriteClips);
+//        Exit.render(ButtonTexture, ExitSpriteClips);
+//    }
+//
+//};
+
 LButton::LButton()
 {
     mPosition.x = 0;
@@ -460,7 +614,7 @@ bool loadMedia();
 
 void clode();
 
-bool checkCollision(SDL_Rect a, SDL_Rect b)
+bool checkCollision(std::vector<SDL_Rect>& a, std::vector<SDL_Rect>& b)
 {
     //The sides of the rectangles
     int leftA, leftB;
@@ -468,42 +622,36 @@ bool checkCollision(SDL_Rect a, SDL_Rect b)
     int topA, topB;
     int bottomA, bottomB;
 
-    //Calculate the sides of rect A
-    leftA = a.x;
-    rightA = a.x + a.w;
-    topA = a.y;
-    bottomA = a.y + a.h;
-
-    //Calculate the sides of rect B
-    leftB = b.x;
-    rightB = b.x + b.w;
-    topB = b.y;
-    bottomB = b.y + b.h;
-    //If any of the sides from A are outside of B
-    if (bottomA <= topB)
+    //Go through the A boxes
+    for (int Abox = 0; Abox < a.size(); Abox++)
     {
-        return false;
+        //Calculate the sides of rect A
+        leftA = a[Abox].x;
+        rightA = a[Abox].x + a[Abox].w;
+        topA = a[Abox].y;
+        bottomA = a[Abox].y + a[Abox].h;
+
+        //Go through the B boxes
+        for (int Bbox = 0; Bbox < b.size(); Bbox++)
+        {
+            //Calculate the sides of rect B
+            leftB = b[Bbox].x;
+            rightB = b[Bbox].x + b[Bbox].w;
+            topB = b[Bbox].y;
+            bottomB = b[Bbox].y + b[Bbox].h;
+
+            //If no sides from A are outside of B
+            if (((bottomA <= topB) || (topA >= bottomB) || (rightA <= leftB) || (leftA >= rightB)) == false)
+            {
+                //A collision is detected
+                return true;
+            }
+        }
     }
 
-    if (topA >= bottomB)
-    {
-        return false;
-    }
-
-    if (rightA <= leftB)
-    {
-        return false;
-    }
-
-    if (leftA >= rightB)
-    {
-        return false;
-    }
-
-    //If none of the sides from A are outside B
-    return true;
+    //If neither set of collision boxes touched
+    return false;
 }
-
 //Random session
 #include <ctime>
 #include <cstdlib>
@@ -583,7 +731,7 @@ public:
 gBackground bg;
 
 const int GROUND = SCREEN_HEIGHT - 70;
-const int JUMP_MAX = 320;
+const int JUMP_MAX = 290;
 const double GRAVITY =120;
 
 static int frame_run = 0;
@@ -595,21 +743,66 @@ static int frame_fastlanding = 0;
 LTexture mShroom;
 class Shroom {
 private:
-    
+    SDL_Rect mColliders;
+    vector <SDL_Rect> mColliders_temp;
+    const int CHAR_WIDTH = 53;
 public:
 
     LTexture* character;
-    int x;
+    int mPosX;
+    int mPosY;
     Shroom() {
-        x = 0;
+        mPosX = 0;
         character = NULL;
+        mPosY = 0;
     }
     Shroom(LTexture &texture, const int &n) {
         character = &texture;
-        x = n;
+        mPosX = n;
+        mPosY = SCREEN_HEIGHT - 80 - character->getHeight() + 5;
+        //collider set
+
+        mColliders.x = mPosX;
+        mColliders.y = mPosY;
+        mColliders.w = 53;
+        mColliders.h = 60;
+
+        //Set colliders
+        mColliders_temp.resize(21);
+        mColliders_temp = {
+            {0, 0, 17, 1},
+            {0, 0, 26, 1},
+            {0, 0, 27, 1},
+            {0, 0, 33, 1},
+            {0, 0, 38, 1},
+            {0, 0, 39, 1},
+            {0, 0, 41, 1},
+            {0, 0, 44, 1},
+            {0, 0, 45, 1},
+            {0, 0, 47, 1},
+            {0, 0, 50, 1},
+            {0, 0, 51, 2},
+            {0, 0, 53, 11},
+            {0, 0, 51, 3},
+            {0, 0, 47, 2},
+            {0, 0, 45, 1},
+            {0, 0, 41, 2},
+            {0, 0, 34, 1},
+            {0, 0, 29, 3},
+            {0, 0, 33, 7},
+            {0, 0, 35, 17}
+        };
+        shiftColliders(mColliders_temp);
+    }
+    SDL_Rect& getColliders()
+    {
+        return mColliders;
+    }
+    vector<SDL_Rect> getCollinders_temp() {
+        return mColliders_temp;
     }
     void setX(const int &n) {
-        x = n;
+        mPosX = n;
     }
     int getWidth() const{
         return character->getWidth();
@@ -618,7 +811,7 @@ public:
         return character->getHeight();
     }
     int getX() const{
-        return x;
+        return mPosX;
     }
     void setCharacter(LTexture &texture){
         character = &texture;
@@ -626,17 +819,40 @@ public:
     void Free(){
         character = NULL;
     }
+    void move() {
+        mPosX -= speedRender;
+        mColliders.x = mPosX+10;
+        shiftColliders(mColliders_temp);
+    }
     void render(int speedRender) {
-        mShroom.render(x, SCREEN_HEIGHT - 80 - character->getHeight());
-        x -= speedRender;
+        move();
+        mShroom.render(mPosX, mPosY);
     }
     bool isOver(){
-        if (x <= -character->getWidth()) {
+        if (mPosX <= -character->getWidth()) {
             //Free();
             //x = SCREEN_WIDTH;
             return true;
         }
         return false;
+    }
+    void shiftColliders(vector <SDL_Rect> &Colliders)
+    {
+        //The row offset
+        int r = 0;
+
+        //Go through the dot's collision boxes
+        for (int set = 0; set < Colliders.size(); ++set)
+        {
+            //Center the collision box
+            Colliders[set].x = mPosX + (CHAR_WIDTH - Colliders[set].w) / 2;
+            //cout <<"Shroom: "<< mColliders[set].x << endl;
+            //Set the collision box at its row offset
+            Colliders[set].y = mPosY + r;
+
+            //Move the row offset down the height of the collision box
+            r += Colliders[set].h;
+        }
     }
 };
 
@@ -659,6 +875,7 @@ private:
 
     double mPosX;
     double mPosY;
+    const int CHAR_WIDTH = 200;
 
     double mVelY;
     bool isFall;
@@ -669,28 +886,60 @@ private:
         FASTLANDING = 3
     };
     int status;
-
     //SDL_Rect mCollinder;
+    vector<SDL_Rect> mCollidersRun[3];
+    vector<SDL_Rect> mCollidersJump[3];
+    vector<SDL_Rect> mCollidersFall[3];
+    vector<SDL_Rect> mCollidersFastLanding[3];
+    
+    vector <SDL_Rect> mColliders;
+    vector <SDL_Rect> mColliders_offset;
 public:
     LTexture run;
     LTexture jump;
     LTexture fall;
+
     gCharacter(){
         mPosX = 150;
         mPosY = GROUND-RUN_SHEET_HEIGHT;
         mVelY = 0;
         
         status = 0;
-
-        isFall = 0;
+        isFall = false;
+        mColliders.resize(1);
+        mColliders = {
+            {59,112,123,48}
+        };
+        mColliders_offset = mColliders;
+        //test
+        shiftColliders(mColliders);
+        //Set colliders
     };
     vector<SDL_Rect> spriteClip_run;
     vector<SDL_Rect> spriteClip_jump;
     vector<SDL_Rect> spriteClip_fall;
 
+    //use only for character
+    void shiftColliders(vector <SDL_Rect>& Colliders)
+    {
+        //The row offset
+        int r = 112;
+        //The Collum offset 
+        int c = 59; 
+        //Go through the dot's collision boxes
+        for (int set = 0; set < Colliders.size(); ++set)
+        {
+            //Center the collision box
+            Colliders[set].x = mPosX + mColliders_offset[set].x;
+            //Set the collision box at its row offset
+            Colliders[set].y = mPosY + mColliders_offset[set].y;
+
+            //Move the row offset down the height of the collision box
+            r += Colliders[set].h;
+        }
+    }
     void show(SDL_Renderer *gRenderer) {
 
-        move();
         if (status == RUN) {
             SDL_Rect* currentClip = &spriteClip_run[frame_run / 7];
             const int RUN_FRAME_SIZE = spriteClip_run.size() - 1;
@@ -731,6 +980,7 @@ public:
             }
             fall.render(mPosX, mPosY, currentClip);
         }
+        move();
     }
     void handleEvent(SDL_Event& e) {
         
@@ -742,6 +992,7 @@ public:
                     mPosY = GROUND-JUMP_SHEET_HEIGHT;
                     frame_jump = 0;
                     timeJump.start();
+                    //gSound.PlayJumpSound();
                 }
             }
             if (e.key.keysym.sym == SDLK_DOWN) {
@@ -768,17 +1019,18 @@ public:
         //     pre_status = status;
         //}
 
-
         //Processing
 
+        shiftColliders(mColliders);
         //Fast landing
         if (status == FASTLANDING) {
             mPosY += 30;
-
+            shiftColliders(mColliders);
             if (mPosY > GROUND - FALL_SHEET_HEIGHT)
             {
                 //Move back
                 mPosY = GROUND - RUN_SHEET_HEIGHT;
+                shiftColliders(mColliders);
                 status = RUN;
                 isFall = false;
             }
@@ -788,6 +1040,7 @@ public:
             mVelY = 220;
             double deltaTime = timeJump.getTicks() / 1000.f;
             mPosY += - (mVelY * (deltaTime)-0.5 * 40 * (deltaTime * deltaTime));
+            shiftColliders(mColliders);
         }
         else if (mPosY <= JUMP_MAX && isFall == false) {
             frame_fall = 0;
@@ -802,6 +1055,7 @@ public:
                 mVelY = 80;
                 double deltaTime = timeJump.getTicks() / 1000.f;
                 mPosY +=mVelY * (deltaTime)+ 0.5*40 * (deltaTime * deltaTime);
+                shiftColliders(mColliders);
                 //cout << "fall_2" << endl;
             } else { 
                 mPosY = GROUND - RUN_SHEET_HEIGHT;
@@ -811,11 +1065,15 @@ public:
             }
         }
     }
+    vector <SDL_Rect> &getColliders()
+    {
+        return mColliders;
+    }
 };
 
 bool init() {
     bool success = true;
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO| SDL_INIT_AUDIO) < 0) {
         cout << "Init error: " << SDL_GetError();
         success = false;
     }
@@ -826,7 +1084,7 @@ bool init() {
             cout<<"Warning: Linear texture filtering not enabled!";
         }
 
-        gWindow = SDL_CreateWindow("BOP!BOP! by duykhanhxx03", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+        gWindow = SDL_CreateWindow("Bop!Bop! by duykhanhxx03", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
         if (gWindow == NULL) {
             cout << "Khong tao duoc window! " << SDL_GetError();
             success = false;
@@ -850,7 +1108,13 @@ bool init() {
 
                 if (TTF_Init() == -1)
                 {
-                    printf("SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
+                    cout<<"SDL_ttf could not initialize! SDL_ttf Error: "<< TTF_GetError();
+                    success = false;
+                }
+                //Initialize SDL_mixer
+                if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096) < 0)
+                {
+                    cout<<"SDL_mixer could not initialize! SDL_mixer Error: " << Mix_GetError();
                     success = false;
                 }
             }
@@ -861,14 +1125,26 @@ bool init() {
 gCharacter Rabbit;
 bool loadMedia() {
     bool success = true;
-    //BG layer load
-
+    
+    //Font
     gFont = TTF_OpenFont("font/lazy.ttf", 28);
     if (gFont == NULL)
     {
         printf("Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
         success = false;
     }
+
+    //Sound
+    if (!gSound.setBgm("sound/bgm.wav")) {
+        cout << "Failed to load bgm" << Mix_GetError() << endl;
+        success = false;
+    }
+    if (!gSound.setJumpSound("sound/jumpsound.wav")) {
+        cout << "Failed to load jumpsound" << Mix_GetError() << endl;
+        success = false;
+    }
+
+    //START MENU
     if (!START_MENU.MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
         cout << "Load menu_bg that bai! " << endl;
         success = false;
@@ -907,6 +1183,49 @@ bool loadMedia() {
         cout << "Load gStartMenu background that bai! " << endl;
         success = false;
     }
+    //PAUSE MENU
+    if (!PAUSE_MENU.MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
+        cout << "Load menu_bg that bai! " << endl;
+        success = false;
+    }
+    else
+    {
+        PAUSE_MENU.MenuBackground.setBlendMode(SDL_BLENDMODE_BLEND);
+    }
+    if (!PAUSE_MENU.ButtonTexture.loadFromFile("imgs/menu/pause/pause_menu_button_sheet.png")) {
+        cout << "Load gPauseMenu that bai! " << endl;
+        success = false;
+    }
+    else
+    {
+        PAUSE_MENU.ResumeSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,320,113 };
+        PAUSE_MENU.ResumeSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,0,320,113 };
+        PAUSE_MENU.ResumeSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,0,320,113 };
+        PAUSE_MENU.ResumeSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,0,320,113 };
+        PAUSE_MENU.Resume.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 160);
+
+        PAUSE_MENU.ReStartSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,122,320,113 };
+        PAUSE_MENU.ReStartSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,122,320,113 };
+        PAUSE_MENU.ReStartSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,122,320,113 };
+        PAUSE_MENU.ReStartSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,122,320,113 };
+        PAUSE_MENU.ReStart.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 280);
+
+        PAUSE_MENU.OptionsSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,241,320,113 };
+        PAUSE_MENU.OptionsSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,241,320,113 };
+        PAUSE_MENU.OptionsSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,241,320,113 };
+        PAUSE_MENU.OptionsSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,241,320,113 };
+        PAUSE_MENU.Options.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 400);
+
+        PAUSE_MENU.ExitSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,361,320,113 };
+        PAUSE_MENU.ExitSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,361,320,113 };
+        PAUSE_MENU.ExitSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,361,320,113 };
+        PAUSE_MENU.ExitSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,361,320,113 };
+        PAUSE_MENU.Exit.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 515);
+    }
+    if (!PAUSE_MENU.PauseMenuBox.loadFromFile("imgs/menu/pause/pausemenubox.png")) {
+        cout << "Load gPauseMenu background that bai! " << endl;
+        success = false;
+    }
 
     if (!bg.Layer1.loadFromFile("imgs/background/background_layer_1.png")) {
         cout << "Load BG Layer1 that bai! "<<endl;
@@ -943,22 +1262,10 @@ bool loadMedia() {
     else
     {
         Rabbit.spriteClip_run = {
-            /*{2156,0,227,184},
-            {1917,0,227,184},
-            {1677,0,227,184},
-            {1438,0,227,184},
-            {1198,0,227,184},
-            {958,0,227,184},
-            {719,0,227,184},
-            {480,0,227,184},
-            {240,0,227,184},
-            {0,0,227,184}*/
-
             //Otter
             {0,0,200,160},
             {200,0,200,160},
             {400,0,200,160}
-
         };
     }
     if (!Rabbit.jump.loadFromFile("imgs/characters/Rabbit/Jump.png")) {
@@ -968,18 +1275,6 @@ bool loadMedia() {
     else
     {
         Rabbit.spriteClip_jump = {
-            /*{0,0,217,328},
-            {229,0,217,328},
-            {456,0,217,328},
-            {681,0,217,328},
-            {907,0,217,328},
-            {1133,0,217,328},
-            {1358,0,217,328},
-            {1585,0,217,328},
-            {1810,0,217,328},
-            {2036,0,217,328}  */
-
-            
             //Otter
             {0,0,200,160},
             {200,0,200,160},
@@ -994,17 +1289,6 @@ bool loadMedia() {
     else
     {
         Rabbit.spriteClip_fall = {
-
-            /*{2262,0,217,328},
-            {2488,0,217,328},
-            {2714,0,217,328},
-            {2940,0,217,328},
-            {3166,0,217,328},
-            {3392,0,217,328},
-            {3617,0,217,328},
-            {3844,0,217,328}*/
-            //{4067,0,217,328}
-
             //Otter
             {0,0,200,160},
             {200,0,200,160},
@@ -1012,7 +1296,6 @@ bool loadMedia() {
             {600,0,200,160}
         };
     }
-
     return success;
 }
 
@@ -1048,19 +1331,17 @@ int main(int argc, char* argv[])
         {
             bool quit = false;
             SDL_Event e;
-            //Queue shroom
+
+            //gSound.PlayMusic();
             //Random
-            int previousRandomNumber = 500;
-            int randomDistance[5] = { 800,500, 600, 440,700 };
-            Shroom one(mShroom, SCREEN_WIDTH), two(mShroom, SCREEN_WIDTH + 500);
+            vector <int> randomDistance = { 100, 300, 500, 200};
+            Shroom one(mShroom, SCREEN_WIDTH), two(mShroom, SCREEN_WIDTH);
             vector <Shroom> test;
             test.push_back(one);
             test.push_back(two);
             
-            int speedRender = 10;
-            
             double a = 0;
-
+            
             while (!quit)
             {
                 while (SDL_PollEvent(&e) != 0) {
@@ -1072,6 +1353,7 @@ int main(int argc, char* argv[])
 
                     //Handle button
                     //START_MENU.handleEvent(e);
+                    //PAUSE_MENU.handleEvent(e);
                 }
                 SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
                 SDL_RenderClear(gRenderer);
@@ -1080,25 +1362,53 @@ int main(int argc, char* argv[])
                 bg.render(speedRender);
                 
                 //Temp random
-                for (int i = 0; i <2; i++) {
+                /*for (int i = 0; i <test.size(); i++) {
                     if (!test[i].isOver()) {
                             test[i].render(speedRender);
                     }
                     else {
-
-                        int index = generateRandomNumber(0, 4);
+                        int index = generateRandomNumber(0, randomDistance.size()-1);
                         int distance = randomDistance[index];
-                        test[i].setX(SCREEN_WIDTH + distance);
+                        int distanceBetweenTwoObstacles = SCREEN_WIDTH + distance - test[(i==0?1:0)].getX();
+                        if (distanceBetweenTwoObstacles >=550 && distanceBetweenTwoObstacles <=1500) {
+                            test[i].setX(SCREEN_WIDTH + distance);
+                        }
                     }
+                }*/
+                test[0].render(10);
+                vector<SDL_Rect> rect_shroom = test[0].getCollinders_temp();
+                vector<SDL_Rect> rect_rabbit = Rabbit.getColliders();
+                
+                if (test[0].isOver()) { 
+                    test[0].setX(SCREEN_WIDTH); 
                 }
-
                 //render rabbit
                 Rabbit.show(gRenderer);
+
+                SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+                
+                for (auto& x : rect_shroom) {
+                    SDL_RenderDrawRect(gRenderer, &x);
+                }
+                for (auto& x : rect_rabbit) {
+                    SDL_RenderDrawRect(gRenderer, &x);
+                }
+                if (checkCollision(rect_shroom, rect_rabbit)) {
+                    cout << "run" << endl;
+                }
                 
                 //Render start menu
                 //START_MENU.show();
+
+                //Render pause menu
+                //PAUSE_MENU.show();
+                
+                //Set volume
+                //gSound.setVolumeMusic(50);
+                //gSound.setVolumeChunk(50);
+                
+                //render screen
                 SDL_RenderPresent(gRenderer);
-               
             }
         }
     }
