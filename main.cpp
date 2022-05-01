@@ -673,7 +673,7 @@ public:
     }
     void render(int speedRender) {
         //Render layer 1
-        static double scrollingOffset_layer1 = 0;
+        static int scrollingOffset_layer1 = 0;
         if (speedRender==0) scrollingOffset_layer1-=0; else
             scrollingOffset_layer1-=1;
         if (scrollingOffset_layer1 < -Layer1.getWidth())
@@ -684,9 +684,9 @@ public:
         Layer1.render(scrollingOffset_layer1 + Layer1.getWidth(), 0);
 
         //Render layer 2
-        static double scrollingOffset_layer2 = 0;
+        static int scrollingOffset_layer2 = 0;
         if (speedRender == 0) scrollingOffset_layer2 -= 0; else
-            scrollingOffset_layer2 -= 1;
+            scrollingOffset_layer2 -= 2;
         if (scrollingOffset_layer2 < -Layer2.getWidth())
         {
             scrollingOffset_layer2 = 0;
@@ -695,9 +695,9 @@ public:
         Layer2.render(scrollingOffset_layer2 + Layer2.getWidth(), 0);
 
         //Render layer 3
-        static double scrollingOffset_layer3 = 0;
+        static int scrollingOffset_layer3 = 0;
         if (speedRender == 0) scrollingOffset_layer3 -= 0; else
-            scrollingOffset_layer3 -= 1;
+            scrollingOffset_layer3 -= 4;
         if (scrollingOffset_layer3 < -Layer3.getWidth())
         {
             scrollingOffset_layer3 = 0;
@@ -706,7 +706,7 @@ public:
         Layer3.render(scrollingOffset_layer3 + Layer3.getWidth(), 0);
 
         //Render layer 4
-        static double scrollingOffset_layer4 = 0;
+        static int scrollingOffset_layer4 = 0;
         scrollingOffset_layer4 -= speedRender;
         if (scrollingOffset_layer4 < -Layer4.getWidth())
         {
@@ -739,13 +739,14 @@ const int GROUND = SCREEN_HEIGHT - 70;
 const int JUMP_MAX = 290;
 const double GRAVITY =120;
 
-//Enemy
+//Obstacles
 LTexture mShroom;
+LTexture mPlantRed;
+LTexture mPlantViolet; 
 class Shroom {
 private:
     vector <SDL_Rect> mColliders;
     vector <SDL_Rect> mColliders_offset;
-    const int CHAR_WIDTH = 53;
 public:
 
     LTexture* character;
@@ -756,30 +757,20 @@ public:
         character = NULL;
         mPosY = 0;
     }
-    Shroom(LTexture &texture, const int &n) {
+    Shroom(LTexture &texture, const int &n, const vector<SDL_Rect>& Colliders={}) {
         character = &texture;
         mPosX = n;
         mPosY = SCREEN_HEIGHT - 80 - character->getHeight() + 5;
-        //collider set
-
-        //Set colliders
-        mColliders.resize(21);
-        mColliders = mColliders_offset={
-            {13,0,27,3},
-            {7,3,39,3},
-            {4,6,45,3},
-            {1,9,51,3},
-            {1,12,51,2},
-            {0,14,53,10},
-            {1,24,51,3},
-            {3,27,47,3},
-            {6,30,41,3},
-            {9,33,35,26}
-        };
+        //set colliders
+        mColliders = mColliders_offset = Colliders;
         shiftColliders(mColliders);
     }
     vector<SDL_Rect> getColliders() {
         return mColliders;
+    }
+    void setColliders(const vector<SDL_Rect>& Colliders) {
+        mColliders = mColliders_offset = Colliders;
+        shiftColliders(mColliders);
     }
     void setX(const int &n) {
         mPosX = n;
@@ -804,7 +795,7 @@ public:
         shiftColliders(mColliders);
     }
     void render(int speedRender) {
-        mShroom.render(mPosX, mPosY);
+        character->render(mPosX, mPosY);
         move();
     }
     bool isOver(){
@@ -831,12 +822,31 @@ public:
     }
 };
 
-bool isOverDistance(int distance, const int &x) {
-    if (SCREEN_HEIGHT - x >= distance) {
-        return true;
+class LIST_OBSTACLES {
+private:
+    LTexture* character;
+    vector<SDL_Rect> mColliders;
+public:
+    vector<SDL_Rect> getColliders() {
+        return mColliders;
     }
-    return false;
-}
+    void setColliders(const vector<SDL_Rect>& Colliders) {
+        mColliders = Colliders;
+    }
+    void setCharacter(LTexture& texture) {
+        character = &texture;
+    }
+    LTexture* getCharacter() {
+        return character;
+    }
+};
+
+vector <LIST_OBSTACLES> listObstacles;
+enum INDEX_LIST_OBSTACLES {
+    SHROOM = 0,
+    PLANTRED = 1,
+    PLANTVIOLET=2
+};
 //timer
 LTimer timeJump;
 enum Rabbit_Sheet_Height {
@@ -844,6 +854,12 @@ enum Rabbit_Sheet_Height {
     JUMP_SHEET_HEIGHT= 160,
     FALL_SHEET_HEIGHT= 160,
     FAST_LANDING_HEIGHT= 160
+};
+enum STATUS {
+    RUN = 0,
+    JUMP = 1,
+    FALL = 2,
+    FASTLANDING = 3
 };
 const int numberOfrunClips = 3;
 const int numberOfjumpClips = 1;
@@ -854,7 +870,6 @@ private:
 
     double mPosX;
     double mPosY;
-    const int CHAR_WIDTH = 200;
 
     int runPresentFrame;
     int jumpPresentFrame;
@@ -863,12 +878,7 @@ private:
 
     double mVelY;
     bool isFall;
-    enum STATUS {
-        RUN = 0,
-        JUMP = 1,
-        FALL = 2,
-        FASTLANDING = 3
-    };
+
     int status;
     //SDL_Rect mCollinder;
 
@@ -1012,7 +1022,9 @@ public:
 
             }
     }
-
+    int getStatus() {
+        return status;
+    }
     void show(SDL_Renderer *gRenderer) {
 
         if (status == RUN) {
@@ -1342,7 +1354,68 @@ bool loadMedia() {
         cout << "Load shroom enemy that bai!" << endl;
         success = false;
     }
-
+    else {
+        vector <SDL_Rect> Colliders = {
+                {7,3,39,3},
+                {4,6,45,3},
+                {1,9,51,3},
+                {1,12,51,2},
+                {0,14,53,10},
+                {1,24,51,3},
+                {3,27,47,3},
+                {6,30,41,3},
+                {9,33,35,26}
+        };
+        LIST_OBSTACLES buffer;
+        buffer.setCharacter(mShroom);
+        buffer.setColliders(Colliders);
+        listObstacles.push_back(buffer);
+    }
+    if (!mPlantRed.loadFromFile("imgs/obstacle/plantred.png")) {
+        cout << "Load plantred enemy that bai!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> Colliders = {
+            {18,0,11,2},
+            {17,2,15,2},
+            {17,4,17,2},
+            {16,6,19,2},
+            {6,8,40,2},
+            {5,10,42,2},
+            {5,12,44,6},
+            {3,18,47,2},
+            {2,20,48,2},
+            {1,22,48,2},
+            {0,25,52,3},
+            {0,28,53,6},
+            {2,34,50,6},
+            {3,40,36,2},
+            {5,42,34,3},
+            {13,46,35,14}
+        };
+        LIST_OBSTACLES buffer;
+        buffer.setCharacter(mPlantRed);
+        buffer.setColliders(Colliders);
+        listObstacles.push_back(buffer);
+    }
+    if (!mPlantViolet.loadFromFile("imgs/obstacle/plantviolet.png")) {
+        cout << "Load plantviolet enemy that bai!" << endl;
+        success = false;
+    }
+    else
+    {
+        vector <SDL_Rect> Colliders = {
+            {0,0,53,38},
+            {8,37,37,9},
+            {6,46,40,6},
+            {4,52,45,8}
+        };
+        LIST_OBSTACLES buffer;
+        buffer.setCharacter(mPlantViolet);
+        buffer.setColliders(Colliders);
+        listObstacles.push_back(buffer);
+    }
     //rabbit
     if (!Rabbit.run.loadFromFile("imgs/characters/Rabbit/Run.png")) {
         cout << "Load rabbit run that bai!" << endl;
@@ -1419,10 +1492,14 @@ int main(int argc, char* argv[])
             bool quit = false;
             SDL_Event e;
 
-            gSound.PlayMusic();
+            //gSound.PlayMusic();
             //Random
             vector <int> randomDistance = { 100, 300, 500, 200};
-            Shroom one(mShroom, SCREEN_WIDTH), two(mShroom, SCREEN_WIDTH);
+            //Collider of Shroom
+
+            Shroom one(mPlantViolet, SCREEN_WIDTH), two(mPlantRed, 0);
+            one.setColliders(listObstacles[PLANTVIOLET].getColliders());
+            two.setColliders(listObstacles[PLANTRED].getColliders());
             vector <Shroom> test;
             test.push_back(one);
             test.push_back(two);
@@ -1445,6 +1522,7 @@ int main(int argc, char* argv[])
                 SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
                 SDL_RenderClear(gRenderer);
 
+                
                 //Background render
                 bg.render(speedRender);
                 vector<SDL_Rect> shroomClips; vector<SDL_Rect> rect_run = Rabbit.getColliders();
@@ -1461,7 +1539,21 @@ int main(int argc, char* argv[])
                             SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
 
                             if (checkCollision(shroomClips, rect_run)) {
-                                cout << "heheh" << endl;
+                                switch (Rabbit.getStatus())
+                                {
+                                case RUN:
+                                    cout << "run" << endl;
+                                    break;
+                                case JUMP:
+                                    cout << "jump" << endl;
+                                    break;
+                                case FALL:
+                                    cout << "fall" << endl;
+                                    break;
+                                case FASTLANDING:
+                                    cout << "fastlanding" << endl;
+                                    break;
+                                }
                             }
                     }
                     else {
@@ -1472,15 +1564,12 @@ int main(int argc, char* argv[])
                             test[i].setX(SCREEN_WIDTH + distance);
                         }
                     }
-                }
-                
-                
+                }         
                 //render rabbit
                 Rabbit.show(gRenderer);
                 for (auto& x : rect_run) {
                     SDL_RenderDrawRect(gRenderer, &x);
                 }
-                
                 //Render start menu
                 //START_MENU.show();
 
