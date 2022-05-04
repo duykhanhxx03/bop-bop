@@ -17,6 +17,15 @@ using namespace std;
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
 int speedRender = 10;
+//10 12 15 16
+enum MENU_STATUS {
+    MENU_STATUS_START=0,
+    //Main game and ingame
+    MENU_STATUS_INGAME=1,
+    MENU_STATUS_PAUSE=2,
+    MENU_STATUS_OPTIONS=3,
+    MENU_STATUS_EXIT=4
+};
 
 SDL_Window* gWindow = NULL;
 
@@ -195,7 +204,7 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
         mTexture = SDL_CreateTextureFromSurface(gRenderer, textSurface);
         if (mTexture == NULL)
         {
-            printf("Unable to create texture from rendered text! SDL Error: %s\n", SDL_GetError());
+            cout<<"Unable to create texture from rendered text! SDL Error: %s\n"<< SDL_GetError();
         }
         else
         {
@@ -209,7 +218,7 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
     }
     else
     {
-        printf("Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError());
+        cout<<"Unable to render text surface! SDL_ttf Error: %s\n"<<TTF_GetError();
     }
 
 
@@ -217,6 +226,27 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
     return mTexture != NULL;
 }
 #endif
+
+class ControllerStatus {
+public:
+    bool isClick;
+    int x_len;
+    int y_len;
+    ControllerStatus() {
+        isClick = false;
+        x_len = 0;
+        y_len = 0;
+    }
+};
+//Threshold controller
+const int THRESHOLD_CONTROLER_LEFT = 570;
+const int THRESHOLD_CONTROLER_RIGHT = 850;
+
+enum LSwitchSprite {
+    SWITCH_SPRITE_MOUSE_ON = 0,
+    SWITCH_SPRITE_MOUSE_OFF = 1,
+    SWITCH_SPRITE_TOTAL = 2
+};
 
 enum LButtonSprite
 {
@@ -229,7 +259,6 @@ enum LButtonSprite
 
 const int BUTTON_WIDTH = 320;
 const int BUTTON_HEIGHT = 113;
-const int TOTAL_BUTTONS = 3;
 //Button
 
 class LButton
@@ -242,10 +271,14 @@ public:
     void setPosition(int x, int y);
 
     //Handles mouse event
-    void handleEvent(SDL_Event* e);
+    void handleEventController(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, ControllerStatus& status);
+    void handleEventSwitch(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, bool& isOn);
 
+    void handleEvent(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT);
     //Shows button sprite
     void render(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]);
+    void renderSwitch(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]);
+    void renderController(LTexture& gButtonSpriteSheetTexture);
 
 private:
     //Top left position
@@ -253,6 +286,10 @@ private:
 
     //Currently used global sprite
     LButtonSprite mCurrentSprite;
+
+    //Currently used global sprite
+    LSwitchSprite mSwitchCurrentSprite;
+    //Switch status
 };
 
 class gStartMenu {
@@ -264,6 +301,7 @@ public:
     LTexture MenuBackground;
     LTexture ButtonTexture;
 
+    
     //Button
     LButton Start;
     LButton Options;
@@ -274,9 +312,9 @@ public:
     SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
     SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
     void handleEvent(SDL_Event &e) {
-        Start.handleEvent(&e);
-        Options.handleEvent(&e);
-        Exit.handleEvent(&e);
+        Start.handleEvent(&e,BUTTON_WIDTH, BUTTON_HEIGHT);
+        Options.handleEvent(&e,BUTTON_WIDTH, BUTTON_HEIGHT);
+        Exit.handleEvent(&e,BUTTON_WIDTH, BUTTON_HEIGHT);
     }
     void show() {
         static int alpha = 0;
@@ -299,6 +337,7 @@ public:
 
 };
 gStartMenu START_MENU;
+
 class gPauseMenu {
 private:
 public:
@@ -320,10 +359,10 @@ public:
     SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
     SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
     void handleEvent(SDL_Event& e) {
-        ReStart.handleEvent(&e);
-        Resume.handleEvent(&e);
-        Options.handleEvent(&e);
-        Exit.handleEvent(&e);
+        ReStart.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
+        Resume.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
+        Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
+        Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
     }
     void show() {
         static int alpha = 0;
@@ -348,53 +387,93 @@ public:
 };
 gPauseMenu PAUSE_MENU;
 
-//class gPauseMenu {
-//private:
-//public:
-//    gPauseMenu() {};
-//    //Start menu texture
-//    LTexture PauseMenuBox;
-//    LTexture MenuBackground;
-//    LTexture ButtonTexture;
-//
-//    //Button
-//    LButton ReStart;
-//    LButton Resume;
-//    LButton Options;
-//    LButton Exit;
-//
-//    //Clips
-//    SDL_Rect ReStartSpriteClips[BUTTON_SPRITE_TOTAL];
-//    SDL_Rect ResumeSpriteClips[BUTTON_SPRITE_TOTAL];
-//    SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
-//    SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
-//    void handleEvent(SDL_Event& e) {
-//        ReStart.handleEvent(&e);
-//        Resume.handleEvent(&e);
-//        Options.handleEvent(&e);
-//        Exit.handleEvent(&e);
-//    }
-//    void show() {
-//        static int alpha = 0;
-//        //Blur
-//        if (alpha > 255) alpha = 255;
-//        MenuBackground.setAlpha(alpha);
-//        alpha += 5;
-//
-//        //Render menu background
-//        MenuBackground.render(0, 0);
-//
-//        //Render start menu box
-//        PauseMenuBox.render((SCREEN_WIDTH - PauseMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - PauseMenuBox.getHeight()) / 2);
-//
-//        //Render button
-//        ReStart.render(ButtonTexture, ReStartSpriteClips);
-//        Resume.render(ButtonTexture, ResumeSpriteClips);
-//        Options.render(ButtonTexture, OptionsSpriteClips);
-//        Exit.render(ButtonTexture, ExitSpriteClips);
-//    }
-//
-//};
+class gOptionsMenu {
+private:
+public:
+    gOptionsMenu() {};
+    //Start menu texture
+    LTexture OptionsMenuBox;
+    LTexture MenuBackground;
+    LTexture BGMTexture;
+    LTexture SFXTexture;
+    LTexture BackTexture;
+
+    //Button
+    LButton Back;
+    LButton SFX;
+    LButton BGM;
+
+    //status
+    ControllerStatus SFXstatus;
+    ControllerStatus BGMstatus;
+
+    //Clips
+    SDL_Rect BackSpriteClips[BUTTON_SPRITE_TOTAL];
+
+    void handleEvent(SDL_Event& e) {
+        Back.handleEvent(&e, BackTexture.getWidth(), BackTexture.getHeight());
+        SFX.handleEventController(&e, SFXTexture.getWidth(), SFXTexture.getHeight(), SFXstatus);
+        BGM.handleEventController(&e, BGMTexture.getWidth(), BGMTexture.getHeight(), BGMstatus);
+    }
+    void show() {
+        static int alpha = 0;
+        //Blur
+        if (alpha > 255) alpha = 255;
+        MenuBackground.setAlpha(alpha);
+        alpha += 5;
+
+        //Render menu background
+        MenuBackground.render(0, 0);
+
+        //Render start menu box
+        OptionsMenuBox.render((SCREEN_WIDTH - OptionsMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - OptionsMenuBox.getHeight()) / 2);
+
+        //Render button
+        Back.render(BackTexture, BackSpriteClips);
+        SFX.renderController(SFXTexture);
+        BGM.renderController(BGMTexture);
+    }
+
+};
+gOptionsMenu OPTIONS_MENU;
+class gIngameMenu {
+private:
+public:
+    gIngameMenu() {};
+    //Start menu texture
+    LTexture PauseTexture;
+    LTexture OptionsTexture;
+    LTexture SoundTexture;
+
+    //status
+    bool pauseIsOn = true;
+    bool soundIsOn = true;
+    bool optionsIsOn = false;
+
+    //Button
+    LButton Pause;
+    LButton Options;
+    LButton Sound;
+
+    //Clips
+    SDL_Rect PauseSpriteClips[BUTTON_SPRITE_TOTAL];
+    SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
+    SDL_Rect SoundSpriteClips[BUTTON_SPRITE_TOTAL];
+    void handleEvent(SDL_Event& e) {
+        Pause.handleEventSwitch(&e, 70, 70, pauseIsOn);
+        Options.handleEventSwitch(&e, 70, 70, optionsIsOn);
+        Sound.handleEventSwitch(&e, 70, 70, soundIsOn);
+    }
+    void show() {
+        //Render button
+        Pause.renderSwitch(PauseTexture, PauseSpriteClips);
+        Options.renderSwitch(OptionsTexture, OptionsSpriteClips);
+        Sound.renderSwitch(SoundTexture, SoundSpriteClips);
+    }
+
+};
+
+gIngameMenu INGAME_MENU;
 
 LButton::LButton()
 {
@@ -410,7 +489,7 @@ void LButton::setPosition(int x, int y)
     mPosition.y = y;
 }
 
-void LButton::handleEvent(SDL_Event* e)
+void LButton::handleEvent(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT)
 {
     //If mouse event happened
     if (e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
@@ -469,8 +548,107 @@ void LButton::handleEvent(SDL_Event* e)
         }
     }
 }
+void LButton::handleEventController(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, ControllerStatus& status)
+{
+    if (e->type == SDL_MOUSEBUTTONDOWN) {
+        int x, y;
+        SDL_GetMouseState(&x, &y);
 
-void LButton::render(LTexture & gButtonSpriteSheetTexture, SDL_Rect SpriteClips[])
+        //Check if mouse is in button
+        bool inside = true;
+
+        //Mouse is left of the button
+        if (x < mPosition.x)
+        {
+            inside = false;
+        }
+        //Mouse is right of the button
+        else if (x > mPosition.x + BUTTON_WIDTH)
+        {
+            inside = false;
+        }
+        //Mouse above the button
+        else if (y < mPosition.y)
+        {
+            inside = false;
+        }
+        //Mouse below the button
+        else if (y > mPosition.y + BUTTON_HEIGHT)
+        {
+            inside = false;
+        }
+
+        if (inside) {
+            status.isClick = true;
+            status.x_len = x - mPosition.x;
+            status.y_len = y - mPosition.y;
+        };
+        //Mouse is outside button
+    }
+    if (e->type == SDL_MOUSEMOTION && status.isClick) {
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        mPosition.x = x - status.x_len;
+        if (mPosition.x < THRESHOLD_CONTROLER_LEFT) mPosition.x = THRESHOLD_CONTROLER_LEFT;
+        if (mPosition.x + BUTTON_WIDTH > THRESHOLD_CONTROLER_RIGHT) mPosition.x = THRESHOLD_CONTROLER_RIGHT - BUTTON_WIDTH;
+    }
+    if (e->type == SDL_MOUSEBUTTONUP) {
+        status.isClick = false;
+    }
+}
+void LButton::handleEventSwitch(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, bool& isOn) {
+    if (e->type == SDL_MOUSEBUTTONDOWN) {
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+        //Check if mouse is in button
+        bool inside = true;
+
+        //Mouse is left of the button
+        if (x < mPosition.x)
+        {
+            inside = false;
+        }
+        //Mouse is right of the button
+        else if (x > mPosition.x + BUTTON_WIDTH)
+        {
+            inside = false;
+        }
+        //Mouse above the button
+        else if (y < mPosition.y)
+        {
+            inside = false;
+        }
+        //Mouse below the button
+        else if (y > mPosition.y + BUTTON_HEIGHT)
+        {
+            inside = false;
+        }
+        if (inside) {
+            isOn = (isOn ? false : true);
+        }
+
+    }
+    switch (isOn)
+    {
+    case true:
+        mSwitchCurrentSprite = SWITCH_SPRITE_MOUSE_ON;
+        break;
+    case false:
+        mSwitchCurrentSprite = SWITCH_SPRITE_MOUSE_OFF;
+        break;
+    }
+
+}
+void LButton::renderController(LTexture& gButtonSpriteSheetTexture)
+{
+    //Show current button sprite
+    gButtonSpriteSheetTexture.render(mPosition.x, mPosition.y);
+}
+void LButton::renderSwitch(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]) {
+    gButtonSpriteSheetTexture.render(mPosition.x, mPosition.y, &SpriteClips[mSwitchCurrentSprite]);
+}
+
+void LButton::render(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[])
 {
     //Show current button sprite
     gButtonSpriteSheetTexture.render(mPosition.x, mPosition.y, &SpriteClips[mCurrentSprite]);
@@ -608,6 +786,39 @@ bool LTimer::isPaused()
     return mPaused && mStarted;
 }
 
+class SCORE {
+private:
+    SDL_Color textColor = { 255, 255, 255, 255 };
+    //Text render
+    LTexture gTextTexture;
+    //Current time start time
+    Uint32 startTime = 0;
+    stringstream timeText;
+    LTimer gScore;
+public:
+    void process() {
+        timeText.str("");
+        timeText << gScore.getTicks() / 500 - startTime;
+    }
+    void pause() {
+        if (gScore.isPaused()) gScore.pause();
+    }
+    void start() {
+        if (!gScore.isStarted()) gScore.start();
+    }
+    void reStart() {
+        if (gScore.isStarted()) gScore.start();
+    }
+    void render() {
+        if (!gTextTexture.loadFromRenderedText(timeText.str().c_str(), textColor)) {
+            cout << "Unable to render time texture!" << endl;
+        }
+        else {
+            gTextTexture.render(SCREEN_WIDTH - gTextTexture.getWidth() - 50, 10);
+        }
+    }
+};
+SCORE score;
 bool init();
 
 bool loadMedia();
@@ -676,7 +887,7 @@ public:
         static int scrollingOffset_layer1 = 0;
         if (speedRender==0) scrollingOffset_layer1-=0; else
             scrollingOffset_layer1-=1;
-        if (scrollingOffset_layer1 < -Layer1.getWidth())
+        if (scrollingOffset_layer1 <= -Layer1.getWidth())
         {
             scrollingOffset_layer1 = 0;
         }
@@ -687,7 +898,7 @@ public:
         static int scrollingOffset_layer2 = 0;
         if (speedRender == 0) scrollingOffset_layer2 -= 0; else
             scrollingOffset_layer2 -= 2;
-        if (scrollingOffset_layer2 < -Layer2.getWidth())
+        if (scrollingOffset_layer2 <= -Layer2.getWidth())
         {
             scrollingOffset_layer2 = 0;
         }
@@ -698,7 +909,7 @@ public:
         static int scrollingOffset_layer3 = 0;
         if (speedRender == 0) scrollingOffset_layer3 -= 0; else
             scrollingOffset_layer3 -= 4;
-        if (scrollingOffset_layer3 < -Layer3.getWidth())
+        if (scrollingOffset_layer3 <= -Layer3.getWidth())
         {
             scrollingOffset_layer3 = 0;
         }
@@ -708,7 +919,7 @@ public:
         //Render layer 4
         static int scrollingOffset_layer4 = 0;
         scrollingOffset_layer4 -= speedRender;
-        if (scrollingOffset_layer4 < -Layer4.getWidth())
+        if (scrollingOffset_layer4 <= -Layer4.getWidth())
         {
             scrollingOffset_layer4 = 0;
         }
@@ -719,12 +930,12 @@ public:
         //Render Ground
         static double scrollingOffset_ground = 0;
         scrollingOffset_ground -= speedRender;
-        if (scrollingOffset_ground < -Ground.getWidth())
+        if (scrollingOffset_ground <= -Ground.getWidth())
         {
             scrollingOffset_ground = 0;
         }
-        Ground.render(scrollingOffset_ground, SCREEN_HEIGHT - 110);
-        Ground.render(scrollingOffset_ground + Ground.getWidth(), SCREEN_HEIGHT-110);
+        Ground.render(scrollingOffset_ground, SCREEN_HEIGHT - Ground.getHeight());
+        Ground.render(scrollingOffset_ground + Ground.getWidth(), SCREEN_HEIGHT - Ground.getHeight());
 
     }
 };
@@ -736,8 +947,9 @@ static int count_fall = 0;
 static int count_fastlanding = 0;
 
 const int GROUND = SCREEN_HEIGHT - 70;
-const int JUMP_MAX = 290;
+const int JUMP_MAX = 270;
 const double GRAVITY =120;
+
 
 //Obstacles
 LTexture mShroom;
@@ -1078,7 +1290,7 @@ public:
                     mPosY = GROUND-JUMP_SHEET_HEIGHT;
                     count_jump = 0;
                     timeJump.start();
-                    gSound.PlayJumpSound();
+                    //gSound.PlayJumpSound();
                 }
             }
             if (e.key.keysym.sym == SDLK_DOWN) {
@@ -1138,7 +1350,7 @@ public:
         }
         if (status == FALL) {
             if (mPosY  <= GROUND-FALL_SHEET_HEIGHT) {
-                mVelY = 80;
+                mVelY = 90;
                 double deltaTime = timeJump.getTicks() / 1000.f;
                 mPosY +=mVelY * (deltaTime)+ 0.5*40 * (deltaTime * deltaTime);
                 shiftColliders();
@@ -1171,6 +1383,12 @@ public:
         }
     }
 };
+void RandomObstacles(Shroom &shroom) {
+    vector <int> randomSrc = {0,1,2,0,1,2,0,1,2,0,1,2};
+    int index= generateRandomNumber(0, randomSrc.size() - 1); 
+    shroom.setCharacter(*listObstacles[randomSrc[index]].getCharacter());
+    shroom.setColliders(listObstacles[randomSrc[index]].getColliders());
+}
 
 bool init() {
     bool success = true;
@@ -1228,10 +1446,10 @@ bool loadMedia() {
     bool success = true;
     
     //Font
-    gFont = TTF_OpenFont("font/lazy.ttf", 28);
+    gFont = TTF_OpenFont("font/Planes_ValMore.ttf", 48);
     if (gFont == NULL)
     {
-        printf("Failed to load lazy font! SDL_ttf Error: %s\n", TTF_GetError());
+        cout<<"Failed to load lazy font! SDL_ttf Error: %s\n"<<TTF_GetError();
         success = false;
     }
 
@@ -1326,6 +1544,78 @@ bool loadMedia() {
     if (!PAUSE_MENU.PauseMenuBox.loadFromFile("imgs/menu/pause/pausemenubox.png")) {
         cout << "Load gPauseMenu background that bai! " << endl;
         success = false;
+    }
+
+    //OPTIONS MENU
+    if (!OPTIONS_MENU.OptionsMenuBox.loadFromFile("imgs/menu/options/optionsmenubox.png")) {
+        success = false;
+        cout << "Load OptionsMenuBox failed! " << endl;
+    }
+    if (!OPTIONS_MENU.BGMTexture.loadFromFile("imgs/menu/options/button_bgm.png")) {
+        success = false;
+        cout << "Load BGMTexture failed! " << endl;
+    }
+    else
+    {
+        OPTIONS_MENU.BGM.setPosition(700, 285);
+    }
+    if (!OPTIONS_MENU.SFXTexture.loadFromFile("imgs/menu/options/button_sfx.png")) {
+        success = false;
+        cout << "Load SFXTexture failed! " << endl;
+    }
+    else {
+        OPTIONS_MENU.SFX.setPosition(700, 385);
+    }
+    if (!OPTIONS_MENU.MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
+        success = false;
+        cout << "Load menu_bg failed! " << endl;
+    }
+    else
+    {
+        OPTIONS_MENU.MenuBackground.setBlendMode(SDL_BLENDMODE_BLEND);
+    }
+    if (!OPTIONS_MENU.BackTexture.loadFromFile("imgs/menu/options/back_button_sheet.png")) {
+        success = false;
+        cout << "Load menu_bg failed! " << endl;
+    }
+    else
+    {
+        OPTIONS_MENU.BackSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,144,152 };
+        OPTIONS_MENU.BackSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,156,144,154 };
+        OPTIONS_MENU.BackSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,312,144,154 };
+        OPTIONS_MENU.BackSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,469,144,154 };
+        OPTIONS_MENU.Back.setPosition(320, 470);
+    }
+    //Ingame menu
+    if (!INGAME_MENU.PauseTexture.loadFromFile("imgs/menu/ingame_menu/pause_onclick.png")) {
+        success = false;
+        cout << "Load switch failed! " << endl;
+    }
+    else
+    {
+        INGAME_MENU.PauseSpriteClips[SWITCH_SPRITE_MOUSE_ON] = { 0,0,65,65 };
+        INGAME_MENU.PauseSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
+        INGAME_MENU.Pause.setPosition(10, 10);
+    }
+    if (!INGAME_MENU.OptionsTexture.loadFromFile("imgs/menu/ingame_menu/options_onclick.png")) {
+        success = false;
+        cout << "Load switch failed! " << endl;
+    }
+    else
+    {
+        INGAME_MENU.OptionsSpriteClips[SWITCH_SPRITE_MOUSE_ON] = { 0,0,65,65 };
+        INGAME_MENU.OptionsSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
+        INGAME_MENU.Options.setPosition(95, 10);
+    }
+    if (!INGAME_MENU.SoundTexture.loadFromFile("imgs/menu/ingame_menu/sound_onclick.png")) {
+        success = false;
+        cout << "Load switch failed! " << endl;
+    }
+    else
+    {
+        INGAME_MENU.SoundSpriteClips[SWITCH_SPRITE_MOUSE_ON] = { 0,0,65,65 };
+        INGAME_MENU.SoundSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
+        INGAME_MENU.Sound.setPosition(180, 10);
     }
 
     if (!bg.Layer1.loadFromFile("imgs/background/background_layer_1.png")) {
@@ -1492,6 +1782,9 @@ int main(int argc, char* argv[])
             bool quit = false;
             SDL_Event e;
 
+            //Score
+            score.start();
+            
             //gSound.PlayMusic();
             //Random
             vector <int> randomDistance = { 100, 300, 500, 200};
@@ -1514,29 +1807,25 @@ int main(int argc, char* argv[])
                     }
                     //Character handle event
                     Rabbit.handleEvent(e);
-
                     //Handle button
                     //START_MENU.handleEvent(e);
                     //PAUSE_MENU.handleEvent(e);
+                    OPTIONS_MENU.handleEvent(e);
+                    INGAME_MENU.handleEvent(e);
                 }
                 SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
                 SDL_RenderClear(gRenderer);
 
-                
                 //Background render
                 bg.render(speedRender);
-                vector<SDL_Rect> shroomClips; vector<SDL_Rect> rect_run = Rabbit.getColliders();
+
+                vector<SDL_Rect> rect_run = Rabbit.getColliders();
                 //Temp random
                 for (int i = 0; i <test.size(); i++) {
                     if (!test[i].isOver()) {
                             SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
-                            shroomClips=test[i].getColliders();
-
+                            vector<SDL_Rect> shroomClips =test[i].getColliders();
                             test[i].render(speedRender);
-                            for (auto& x : shroomClips) {
-                                SDL_RenderDrawRect(gRenderer, &x);
-                            }
-                            SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
 
                             if (checkCollision(shroomClips, rect_run)) {
                                 switch (Rabbit.getStatus())
@@ -1557,29 +1846,38 @@ int main(int argc, char* argv[])
                             }
                     }
                     else {
-                        int index = generateRandomNumber(0, randomDistance.size()-1);
-                        int distance = randomDistance[index];
+                        int index_ = generateRandomNumber(0, randomDistance.size()-1);
+                        int distance = randomDistance[index_];
                         int distanceBetweenTwoObstacles = SCREEN_WIDTH + distance - test[(i==0?1:0)].getX();
-                        if (distanceBetweenTwoObstacles >=550 && distanceBetweenTwoObstacles <=1500) {
+                        if (distanceBetweenTwoObstacles >=600 && distanceBetweenTwoObstacles <=1500) {
+                            RandomObstacles(test[i]);
                             test[i].setX(SCREEN_WIDTH + distance);
                         }
                     }
                 }         
                 //render rabbit
                 Rabbit.show(gRenderer);
-                for (auto& x : rect_run) {
-                    SDL_RenderDrawRect(gRenderer, &x);
-                }
+
                 //Render start menu
                 //START_MENU.show();
 
                 //Render pause menu
                 //PAUSE_MENU.show();
                 
+                //Render options menu
+                //OPTIONS_MENU.show();
+
+                //Render ingame menu
+                INGAME_MENU.show();
+
+                //Score render
+                score.process();
+                score.render();
+                
                 //Set volume
                 //gSound.setVolumeMusic(50);
                 //gSound.setVolumeChunk(50);
-                
+                 
                 //render screen
                 SDL_RenderPresent(gRenderer);
             }
