@@ -1,6 +1,8 @@
 // BopBop.cpp : This file contains the 'main' function. Program execution begins and ends there.
 
 #include <iostream>
+#include <ctime>
+#include <cstdlib>
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <SDL_image.h>
@@ -8,41 +10,120 @@
 #include <string>
 #include <vector>
 #include <sstream>
-#include <queue>
 #include <math.h>
 
 using namespace std;
+bool quit = false;
 
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
-int speedRender = 10;
+int speedRender = 0;
+// 10 12 15 18 20
+int speedRenderSaved = 0;
+int saved_speedRender = 10;
+enum GAME_STATUS {
+    GAME_STATUS_IDLE,
+    GAME_STATUS_PLAYING,
+    GAME_STATUS_PAUSED,
+    GAME_STATUS_LOSE
+};
 //10 12 15 16
 enum MENU_STATUS {
-    MENU_STATUS_START = 0,
-    //Main game and ingame
-    MENU_STATUS_INGAME = 1,
-    MENU_STATUS_PAUSE = 2,
-    MENU_STATUS_OPTIONS = 3,
-    MENU_STATUS_EXIT = 4
+    MENU_STATUS_START,
+    MENU_STATUS_PLAYING,
+    MENU_STATUS_PAUSED,
+    MENU_STATUS_OPTIONS,
+    MENU_STATUS_LOSE,
+    MENU_STATUS_EXIT
+};
+MENU_STATUS menuStatus = MENU_STATUS_START;
+MENU_STATUS menuPre = menuStatus;
+GAME_STATUS gameStatus = GAME_STATUS_IDLE;
+void mainGameInit();
+enum TO_DO {
+    TO_DO_START,
+    TO_DO_BACK,
+    TO_DO_RESUME,
+    TO_DO_RESTART,
+    TO_DO_PAUSE,
+    TO_DO_EXIT,
+    TO_DO_OPTIONS,
+    TO_DO_SET_VOL_BGM,
+    TO_DO_SET_VOL_SFX,
+    TO_DO_TURN_OFF_SOUND,
+    TO_DO_TURN_ON_SOUND
+};
+void handle(const TO_DO& todo,const double &v=MIX_MAX_VOLUME/2);
+enum Otter_Sheet_Height {
+    RUN_SHEET_HEIGHT = 160,
+    JUMP_SHEET_HEIGHT = 160,
+    FALL_SHEET_HEIGHT = 160,
+    FAST_LANDING_HEIGHT = 160
+};
+enum STATUS {
+    RUN = 0,
+    JUMP = 1,
+    FALL = 2,
+    FASTLANDING = 3
+};
+const int numberOfrunClips = 3;
+const int numberOfjumpClips = 1;
+const int numberOffallClips = 1;
+const int numberOffastlandingClips = 1;
+
+class ControllerStatus {
+public:
+    bool isClick;
+    int x_len;
+    int y_len;
+    ControllerStatus() {
+        isClick = false;
+        x_len = 0;
+        y_len = 0;
+    }
+};
+//Threshold controller
+const int THRESHOLD_CONTROLER_LEFT = 570;
+const int THRESHOLD_CONTROLER_RIGHT = 850;
+
+enum LSwitchSprite {
+    SWITCH_SPRITE_MOUSE_ON = 0,
+    SWITCH_SPRITE_MOUSE_OFF = 1,
+    SWITCH_SPRITE_TOTAL = 2
 };
 
+enum LButtonSprite
+{
+    BUTTON_SPRITE_MOUSE_OUT = 0,
+    BUTTON_SPRITE_MOUSE_OVER_MOTION = 1,
+    BUTTON_SPRITE_MOUSE_DOWN = 2,
+    BUTTON_SPRITE_MOUSE_UP = 3,
+    BUTTON_SPRITE_TOTAL = 4
+};
+
+const int BUTTON_WIDTH = 320;
+const int BUTTON_HEIGHT = 113;
 SDL_Window* gWindow = NULL;
 
 SDL_Renderer* gRenderer = NULL;
 
 TTF_Font* gFont = NULL;
 
-//Sound
 class LSound {
 private:
     Mix_Music* gBgm;
     Mix_Chunk* gJumpSound;
+    Mix_Chunk* gLoseSound;
     //MIX_MAX_VOLUME=128
-    int volumeMusic = MIX_MAX_VOLUME;
-    int volumeChunk = MIX_MAX_VOLUME;
+    int volumeMusic = 64;
+    int volumeChunk = 64;
+    
+    int savedVolumeMusic = volumeMusic;
+    int savedVolumeChunk = volumeChunk;
 public:
     bool setBgm(const string& path);
     bool setJumpSound(const string& path);
+    bool setLoseSound(const string& path);
     bool isPlayingMusic();
     bool isPausedMusic();
     void StopMusic();
@@ -50,8 +131,28 @@ public:
     void PauseMusic();
     void ResumeMusic();
     void PlayJumpSound();
+    void PlayLoseSound();
+    int getVolumeMusic() {
+        return volumeMusic;
+    }
+    int getVolumeChunk() {
+        return volumeChunk;
+    }
     void setVolumeMusic(const int& v);
     void setVolumeChunk(const int& v);
+    void turnOffSound() {
+        savedVolumeMusic = volumeMusic;
+        savedVolumeChunk = volumeChunk;
+        volumeChunk = volumeChunk = 0;
+        setVolumeChunk(volumeChunk);
+        setVolumeMusic(volumeMusic);
+    }
+    void turnOnSound() {
+        volumeMusic = savedVolumeMusic;
+        volumeChunk = savedVolumeChunk;
+        setVolumeChunk(volumeChunk);
+        setVolumeMusic(volumeMusic);
+    }
 };
 LSound gSound;
 
@@ -117,39 +218,6 @@ private:
     int mHeight;
 };
 
-class ControllerStatus {
-public:
-    bool isClick;
-    int x_len;
-    int y_len;
-    ControllerStatus() {
-        isClick = false;
-        x_len = 0;
-        y_len = 0;
-    }
-};
-//Threshold controller
-const int THRESHOLD_CONTROLER_LEFT = 570;
-const int THRESHOLD_CONTROLER_RIGHT = 850;
-
-enum LSwitchSprite {
-    SWITCH_SPRITE_MOUSE_ON = 0,
-    SWITCH_SPRITE_MOUSE_OFF = 1,
-    SWITCH_SPRITE_TOTAL = 2
-};
-
-enum LButtonSprite
-{
-    BUTTON_SPRITE_MOUSE_OUT = 0,
-    BUTTON_SPRITE_MOUSE_OVER_MOTION = 1,
-    BUTTON_SPRITE_MOUSE_DOWN = 2,
-    BUTTON_SPRITE_MOUSE_UP = 3,
-    BUTTON_SPRITE_TOTAL = 4
-};
-
-const int BUTTON_WIDTH = 320;
-const int BUTTON_HEIGHT = 113;
-
 //Button
 class LButton
 {
@@ -161,10 +229,10 @@ public:
     void setPosition(int x, int y);
 
     //Handles mouse event
-    void handleEventController(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, ControllerStatus& status);
-    void handleEventSwitch(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, bool& isOn);
+    void handleEventController(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, ControllerStatus& status,const TO_DO &todo);
+    void handleEventSwitch(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, bool& isOn, const TO_DO& todo);
 
-    void handleEvent(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT);
+    void handleEvent(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT,const TO_DO &todo=TO_DO_START, bool isBack = false);
     //Shows button sprite
     void render(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]);
     void renderSwitch(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]);
@@ -202,19 +270,19 @@ public:
     SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
     SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
     void handleEvent(SDL_Event& e) {
-        Start.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
-        Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
-        Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
+        Start.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT,TO_DO_START);
+        Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_OPTIONS);
+        Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT);
     }
     void show() {
         static int alpha = 0;
         //Blur
         if (alpha > 255) alpha = 255;
         MenuBackground.setAlpha(alpha);
-        alpha += 5;
+        alpha += 40;
 
         //Render menu background
-        MenuBackground.render(0, 0);
+        //MenuBackground.render(0, 0);
 
         //Render start menu box
         StartMenuBox.render((SCREEN_WIDTH - StartMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - StartMenuBox.getHeight()) / 2);
@@ -249,10 +317,10 @@ public:
     SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
     SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
     void handleEvent(SDL_Event& e) {
-        ReStart.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
-        Resume.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
-        Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
-        Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT);
+        ReStart.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_RESTART);
+        Resume.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_RESUME);
+        Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_OPTIONS);
+        Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT);
     }
     void show() {
         static int alpha = 0;
@@ -262,7 +330,7 @@ public:
         alpha += 5;
 
         //Render menu background
-        MenuBackground.render(0, 0);
+        //MenuBackground.render(0, 0);
 
         //Render start menu box
         PauseMenuBox.render((SCREEN_WIDTH - PauseMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - PauseMenuBox.getHeight()) / 2);
@@ -301,9 +369,9 @@ public:
     SDL_Rect BackSpriteClips[BUTTON_SPRITE_TOTAL];
 
     void handleEvent(SDL_Event& e) {
-        Back.handleEvent(&e, BackTexture.getWidth(), BackTexture.getHeight());
-        SFX.handleEventController(&e, SFXTexture.getWidth(), SFXTexture.getHeight(), SFXstatus);
-        BGM.handleEventController(&e, BGMTexture.getWidth(), BGMTexture.getHeight(), BGMstatus);
+        Back.handleEvent(&e, BackTexture.getWidth(), BackTexture.getHeight(), TO_DO_BACK, true);
+        SFX.handleEventController(&e, SFXTexture.getWidth(), SFXTexture.getHeight(), SFXstatus, TO_DO_SET_VOL_SFX);
+        BGM.handleEventController(&e, BGMTexture.getWidth(), BGMTexture.getHeight(), BGMstatus, TO_DO_SET_VOL_BGM);
     }
     void show() {
         static int alpha = 0;
@@ -313,7 +381,7 @@ public:
         alpha += 5;
 
         //Render menu background
-        MenuBackground.render(0, 0);
+        //MenuBackground.render(0, 0);
 
         //Render start menu box
         OptionsMenuBox.render((SCREEN_WIDTH - OptionsMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - OptionsMenuBox.getHeight()) / 2);
@@ -351,9 +419,9 @@ public:
     SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
     SDL_Rect SoundSpriteClips[BUTTON_SPRITE_TOTAL];
     void handleEvent(SDL_Event& e) {
-        Pause.handleEventSwitch(&e, 70, 70, pauseIsOn);
-        Options.handleEventSwitch(&e, 70, 70, optionsIsOn);
-        Sound.handleEventSwitch(&e, 70, 70, soundIsOn);
+        Pause.handleEventSwitch(&e, 70, 70, pauseIsOn, TO_DO_PAUSE);
+        Options.handleEventSwitch(&e, 70, 70, optionsIsOn, TO_DO_OPTIONS);
+        Sound.handleEventSwitch(&e, 70, 70, soundIsOn, (soundIsOn==true?TO_DO_TURN_OFF_SOUND: TO_DO_TURN_ON_SOUND));
     }
     void show() {
         //Render button
@@ -365,6 +433,22 @@ public:
 };
 gIngameMenu INGAME_MENU;
 
+class gLoseMenu {
+public:
+    LTexture LoseTexture;
+    gLoseMenu() {};
+    void handleEvent(SDL_Event& e) {
+        if (e.type == SDL_KEYDOWN)
+            if (e.key.keysym.sym == SDLK_SPACE && e.key.repeat == 0) {
+                handle(TO_DO_RESTART);
+            }
+    }
+    void show() {
+        LoseTexture.render((SCREEN_WIDTH - LoseTexture.getWidth()) / 2, (SCREEN_HEIGHT - LoseTexture.getHeight()) / 2);
+    }
+};
+gLoseMenu LOSE_MENU;
+
 class Score {
 private:
     SDL_Color textColor = { 255, 255, 255, 255 };
@@ -373,13 +457,24 @@ private:
     //Current time start time
     Uint32 startTime = 0;
     stringstream timeText;
-    LTimer gScore;
+    LTimer gTimer;
+
+    Uint32 score=0;
 public:
     void process();
     void pause();
     void start();
     void reStart();
     void render();
+    void shiftScore();
+    void resume();
+    void stop() {
+        if (gTimer.isStarted()) gTimer.stop();
+    }
+    int getScore();
+    bool isStarted() {
+        return gTimer.isStarted();
+    }
 };
 Score score;
 bool init();
@@ -426,15 +521,9 @@ bool checkCollision(vector<SDL_Rect>& a, vector<SDL_Rect>& b)
     //If neither set of collision boxes touched
     return false;
 }
-//Random session
-#include <ctime>
-#include <cstdlib>
-int generateRandomNumber(const int min, const int max)
-{
-    srand(time(0));
-    // TODO: Return a random integer number between min and max
-    return rand() % (max - min + 1) + min;
-}
+
+void increasingDifficultyLevels(int& speedRender, Score& score);
+
 class gBackground {
 public:
     LTexture Layer1;
@@ -508,6 +597,7 @@ static int count_run = 0;
 static int count_jump = 0;
 static int count_fall = 0;
 static int count_fastlanding = 0;
+static int count_idle = 0;
 
 const int GROUND = SCREEN_HEIGHT - 70;
 const int JUMP_MAX = 270;
@@ -561,6 +651,7 @@ public:
     }
     void setCharacter(LTexture& texture) {
         character = &texture;
+        mPosY = SCREEN_HEIGHT - 80 - character->getHeight() + 5;
     }
     void Free() {
         character = NULL;
@@ -594,7 +685,6 @@ public:
         }
     }
 };
-void RandomObstacles(Obstacle& obstacle);
 enum INDEX_LIST_OBSTACLES {
     SHROOM = 0,
     PLANTRED = 1,
@@ -620,25 +710,9 @@ public:
     }
 };
 vector <ObstacleProperties> randomListObstacles;
+int generateRandomNumber(const int min, const int max);
+void RandomObstacles(Obstacle& obstacle);
 
-//timer
-LTimer timeJump;
-enum Otter_Sheet_Height {
-    RUN_SHEET_HEIGHT = 160,
-    JUMP_SHEET_HEIGHT = 160,
-    FALL_SHEET_HEIGHT = 160,
-    FAST_LANDING_HEIGHT = 160
-};
-enum STATUS {
-    RUN = 0,
-    JUMP = 1,
-    FALL = 2,
-    FASTLANDING = 3
-};
-const int numberOfrunClips = 3;
-const int numberOfjumpClips = 1;
-const int numberOffallClips = 1;
-const int numberOffastlandingClips = 1;
 class gCharacter {
 private:
 
@@ -649,10 +723,13 @@ private:
     int jumpPresentFrame;
     int fallPresentFrame;
     int fastlandingPresentFrame;
+    int idlePresentFrame;
 
     double mVelY;
     bool isFall;
 
+    //timer
+    LTimer timeJump;
     int status;
     //SDL_Rect mCollinder;
 
@@ -674,6 +751,7 @@ public:
     LTexture run;
     LTexture jump;
     LTexture fall;
+    LTexture idle;
 
     gCharacter() {
         runPresentFrame = 0;
@@ -743,26 +821,27 @@ public:
         };
 
         mCollidersJump[0] = mCollidersFall[0] = mCollidersFastLanding[0]
-            = mCollidersJump_offset[0] = mCollidersFall_offset[0] = mCollidersFastLanding_offset[0] = {
-{112,96,32,4},
-{100,100,50,4},
-{92,104,62,6},
-{84,110,74,4},
-{80,114,80,4},
-{138,118,20,4},
-{76,118,56,4},
-{74,122,58,8},
-{72,130,56,4},
-{66,134,50,4},
-{62,138,52,4},
-{66,142,44,10},
-{88,152,26,8}
+        = mCollidersJump_offset[0] = mCollidersFall_offset[0] = mCollidersFastLanding_offset[0] = {
+            {112,96,32,4},
+            {100,100,50,4},
+            {92,104,62,6},
+            {84,110,74,4},
+            {80,114,80,4},
+            {138,118,20,4},
+            {76,118,56,4},
+            {74,122,58,8},
+            {72,130,56,4},
+            {66,134,50,4},
+            {62,138,52,4},
+            {66,142,44,10},
+            {88,152,26,8}
         };
         shiftColliders();
     };
     vector<SDL_Rect> spriteClip_run;
     vector<SDL_Rect> spriteClip_jump;
     vector<SDL_Rect> spriteClip_fall;
+    vector<SDL_Rect> spriteClip_idle;
 
     //use only for character
     void shiftColliders() {
@@ -800,47 +879,62 @@ public:
         return status;
     }
     void show(SDL_Renderer* gRenderer) {
+        if (gameStatus == GAME_STATUS_IDLE) {
+            idlePresentFrame = count_idle++ / 10;
 
-        if (status == RUN) {
-            runPresentFrame = count_run++ / 7;
-            SDL_Rect* currentClip = &spriteClip_run[runPresentFrame];
-            const int RUN_FRAME_SIZE = spriteClip_run.size() - 1;
-            if (count_run / 7 > RUN_FRAME_SIZE) {
-                count_run = 0;
+            SDL_Rect* currentClip = &spriteClip_idle[idlePresentFrame];
+            const int IDLE_FRAME_SIZE = spriteClip_idle.size() - 1;
+            if (count_idle / 10 > IDLE_FRAME_SIZE) {
+                count_idle = 0;
             }
-            run.render(mPosX, mPosY, currentClip);
+            idle.render(mPosX, mPosY, currentClip);
         }
+        else {
+            if (status == RUN) {
+                runPresentFrame = count_run / 7;
+                if (gameStatus == GAME_STATUS_PLAYING) count_run++;
+                SDL_Rect* currentClip = &spriteClip_run[runPresentFrame];
+                const int RUN_FRAME_SIZE = spriteClip_run.size() - 1;
+                if (count_run / 7 > RUN_FRAME_SIZE) {
+                    count_run = 0;
+                }
+                run.render(mPosX, mPosY, currentClip);
+            }
 
-        if (status == JUMP) {
-            jumpPresentFrame = count_jump++ / 20;
-            SDL_Rect* currentClip = &spriteClip_jump[jumpPresentFrame];
-            const int JUMP_FRAME_SIZE = spriteClip_jump.size() - 1;
-            if (count_jump / 20 > JUMP_FRAME_SIZE) {
-                count_jump = 0;
+            if (status == JUMP) {
+                jumpPresentFrame = count_jump / 20;
+                if (gameStatus == GAME_STATUS_PLAYING) count_jump++;
+                SDL_Rect* currentClip = &spriteClip_jump[jumpPresentFrame];
+                const int JUMP_FRAME_SIZE = spriteClip_jump.size() - 1;
+                if (count_jump / 20 > JUMP_FRAME_SIZE) {
+                    count_jump = 0;
+                }
+                jump.render(mPosX, mPosY, currentClip);
             }
-            jump.render(mPosX, mPosY, currentClip);
-        }
 
-        if (status == FALL) {
-            fallPresentFrame = count_fall++ / 7;
-            SDL_Rect* currentClip = &spriteClip_fall[fallPresentFrame];
-            const int FALL_FRAME_SIZE = spriteClip_fall.size() - 1;
-            if (count_fall / 7 > FALL_FRAME_SIZE) {
-                count_fall = 0;
+            if (status == FALL) {
+                fallPresentFrame = count_fall / 7;
+                if (gameStatus == GAME_STATUS_PLAYING) count_fall++;
+                SDL_Rect* currentClip = &spriteClip_fall[fallPresentFrame];
+                const int FALL_FRAME_SIZE = spriteClip_fall.size() - 1;
+                if (count_fall / 7 > FALL_FRAME_SIZE) {
+                    count_fall = 0;
+                }
+                fall.render(mPosX, mPosY, currentClip);
             }
-            fall.render(mPosX, mPosY, currentClip);
-        }
 
-        if (status == FASTLANDING) {
-            fastlandingPresentFrame = count_fastlanding++ / 8;
-            SDL_Rect* currentClip = &spriteClip_fall[fastlandingPresentFrame];
-            const int FASTLANDING_FRAME_SIZE = spriteClip_fall.size() - 1;
-            if (count_fastlanding / 8 > FASTLANDING_FRAME_SIZE) {
-                count_fastlanding = 0;
+            if (status == FASTLANDING) {
+                fastlandingPresentFrame = count_fastlanding / 8;
+                if (gameStatus == GAME_STATUS_PLAYING) count_fastlanding++;
+                SDL_Rect* currentClip = &spriteClip_fall[fastlandingPresentFrame];
+                const int FASTLANDING_FRAME_SIZE = spriteClip_fall.size() - 1;
+                if (count_fastlanding / 8 > FASTLANDING_FRAME_SIZE) {
+                    count_fastlanding = 0;
+                }
+                fall.render(mPosX, mPosY, currentClip);
             }
-            fall.render(mPosX, mPosY, currentClip);
+            move();
         }
-        move();
     }
     void handleEvent(SDL_Event& e) {
 
@@ -852,7 +946,7 @@ public:
                     mPosY = GROUND - JUMP_SHEET_HEIGHT;
                     count_jump = 0;
                     timeJump.start();
-                    //gSound.PlayJumpSound();
+                    gSound.PlayJumpSound();
                 }
             }
             if (e.key.keysym.sym == SDLK_DOWN) {
@@ -947,7 +1041,6 @@ public:
     }
 };
 gCharacter Otter;
-
 bool init() {
     bool success = true;
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
@@ -1020,7 +1113,10 @@ bool loadMedia() {
         cout << "Failed to load jumpsound" << Mix_GetError() << endl;
         success = false;
     }
-
+    if (!gSound.setLoseSound("sound/losesound.wav")) {
+        cout << "Failed to load losesound" << Mix_GetError() << endl;
+        success = false;
+    }
     //START MENU
     if (!START_MENU.MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
         cout << "Load menu_bg that bai! " << endl;
@@ -1115,14 +1211,14 @@ bool loadMedia() {
     }
     else
     {
-        OPTIONS_MENU.BGM.setPosition(700, 285);
+        OPTIONS_MENU.BGM.setPosition(700, 385);
     }
     if (!OPTIONS_MENU.SFXTexture.loadFromFile("imgs/menu/options/button_sfx.png")) {
         success = false;
         cout << "Load SFXTexture failed! " << endl;
     }
     else {
-        OPTIONS_MENU.SFX.setPosition(700, 385);
+        OPTIONS_MENU.SFX.setPosition(700, 285);
     }
     if (!OPTIONS_MENU.MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
         success = false;
@@ -1175,7 +1271,12 @@ bool loadMedia() {
         INGAME_MENU.SoundSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
         INGAME_MENU.Sound.setPosition(180, 10);
     }
-
+    if (!LOSE_MENU.LoseTexture.loadFromFile("imgs/menu/lose/gameover.png")) {
+        cout << "failed to load loseTexture" << endl;
+        success = false;
+    }
+    
+    //Background
     if (!bg.Layer1.loadFromFile("imgs/background/background_layer_1.png")) {
         cout << "Load BG Layer1 that bai! " << endl;
         success = false;
@@ -1304,6 +1405,31 @@ bool loadMedia() {
             //{400,0,200,160}
         };
     }
+    if (!Otter.idle.loadFromFile("imgs/characters/Otter/idle.png")) {
+        cout << "Load Otter idle that bai!" << endl;
+        success = false;
+    }
+    else
+    {
+        Otter.spriteClip_idle = {
+            {0,0,250,160},
+            {250,0,250,160},
+            {500,0,250,160},
+            {750,0,250,160},
+            {1000,0,250,160},
+            {1250,0,250,160},
+            {1500,0,250,160},
+            {1750,0,250,160},
+            {2000,0,250,160},
+            {2250,0,250,160},
+            {2500,0,250,160},
+            {2750,0,250,160},
+            {3000,0,250,160},
+            {3250,0,250,160},
+            {3500,0,250,160},
+            {3750,0,250,160},
+        };
+    }
     return success;
 }
 
@@ -1325,6 +1451,109 @@ void close() {
     SDL_Quit();
 }
 //DECLARE
+vector <int> randomDistance = { 100, 300, 500, 200, 400};
+Obstacle one, two;
+vector <Obstacle> loopEnemy;
+void mainGameInit() {
+    //first obstacle
+    RandomObstacles(one);
+    one.setX(SCREEN_WIDTH);
+
+    //second obstacle
+    RandomObstacles(two);
+    two.setX(SCREEN_WIDTH+ SCREEN_WIDTH);
+
+    //set loopEnemy
+    loopEnemy = { one, two };
+    if (!score.isStarted()) {
+        score.start();
+        speedRender = 10;
+    }
+}
+void handle(const TO_DO& todo, const double &v) {
+    switch (todo)
+    {
+    case TO_DO_START:
+        mainGameInit();
+        menuStatus = MENU_STATUS_PLAYING;
+        gameStatus = GAME_STATUS_PLAYING;
+        break;
+    case TO_DO_RESUME:
+        speedRender = speedRenderSaved;
+        menuStatus = MENU_STATUS_PLAYING;
+        gameStatus = GAME_STATUS_PLAYING;
+        score.resume();
+        break;
+    case TO_DO_RESTART:
+        score.stop();
+        mainGameInit();
+        menuStatus = MENU_STATUS_PLAYING;
+        gameStatus = GAME_STATUS_PLAYING;
+        break;
+    case TO_DO_OPTIONS:
+        menuStatus = MENU_STATUS_OPTIONS;
+        break;
+    case TO_DO_PAUSE:
+        speedRenderSaved = speedRender;
+        speedRender = 0;
+        gameStatus = GAME_STATUS_PAUSED;
+        menuStatus = MENU_STATUS_PAUSED;
+        score.pause();
+        break;
+    case TO_DO_EXIT:
+        quit = true;
+        break;
+    case TO_DO_BACK:
+        menuStatus = menuPre;
+        break;
+    case TO_DO_SET_VOL_BGM:
+        gSound.setVolumeMusic(v);
+        break;
+    case TO_DO_SET_VOL_SFX:
+        gSound.setVolumeChunk(v);
+        break;
+    }
+
+
+}
+void mainGameProcess() {
+    //Background render
+    bg.render(speedRender);
+
+    vector<SDL_Rect> rect_run = Otter.getColliders();
+    for (int i = 0; i < loopEnemy.size(); i++) {
+        if (!loopEnemy[i].isOver()) {
+            SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
+            vector<SDL_Rect> obstaclesClips = loopEnemy[i].getColliders();
+            loopEnemy[i].render(speedRender);
+            if (checkCollision(obstaclesClips, rect_run)) {
+                score.pause();
+                speedRender = 0;
+                if (gameStatus == GAME_STATUS_PLAYING) gSound.PlayLoseSound();
+                gameStatus = GAME_STATUS_LOSE;
+                menuStatus = MENU_STATUS_LOSE;
+            }
+        }
+        else {
+            int index = generateRandomNumber(0, randomDistance.size() - 1);
+            int distance = randomDistance[index];
+            int distanceBetweenTwoObstacles = SCREEN_WIDTH + distance - loopEnemy[(i == 0 ? 1 : 0)].getX();
+            if (distanceBetweenTwoObstacles >= 600 && distanceBetweenTwoObstacles <= 1500) {
+                loopEnemy[i].setX(SCREEN_WIDTH + distance);
+                RandomObstacles(loopEnemy[i]);
+            }
+        }
+    }
+    //render Otter
+    Otter.show(gRenderer);
+    increasingDifficultyLevels(speedRender, score);
+    //INGAME MENU
+    INGAME_MENU.show();
+    
+    //Score render
+    score.process();
+    score.render();
+}
 
 int main(int argc, char* argv[])
 {
@@ -1338,96 +1567,67 @@ int main(int argc, char* argv[])
         }
         else
         {
-            bool quit = false;
             SDL_Event e;
+            gSound.PlayMusic();
 
-            //Score
-            score.start();
-
-            //gSound.PlayMusic();
-            vector <int> randomDistance = { 100, 300, 500, 200 };
-            Obstacle one(mPlantViolet, SCREEN_WIDTH, randomListObstacles[PLANTVIOLET].getColliders());
-            Obstacle two(mPlantRed, 0, randomListObstacles[PLANTRED].getColliders());
-            vector <Obstacle> loopEnemy = { one, two };
-
+            bool isPaused = false;
             while (!quit)
             {
                 while (SDL_PollEvent(&e) != 0) {
                     if (e.type == SDL_QUIT) {
                         quit = true;
+                    }   
+                    switch (menuStatus)
+                    {
+                    case MENU_STATUS_START:
+                        START_MENU.handleEvent(e);
+                        break;
+                    case MENU_STATUS_PLAYING:
+                        Otter.handleEvent(e);
+                        INGAME_MENU.handleEvent(e);
+                        if (e.type == SDL_KEYDOWN)
+                            if (e.key.keysym.sym == SDLK_ESCAPE && e.key.repeat == 0) handle(TO_DO_PAUSE);
+                        break;
+                    case MENU_STATUS_PAUSED:
+                        PAUSE_MENU.handleEvent(e);
+                        INGAME_MENU.handleEvent(e);
+                        if (e.type == SDL_KEYDOWN)
+                            if (e.key.keysym.sym == SDLK_ESCAPE && e.key.repeat == 0) handle(TO_DO_RESUME);
+                        break;
+                    case MENU_STATUS_OPTIONS:
+                        OPTIONS_MENU.handleEvent(e);
+                        INGAME_MENU.handleEvent(e);
+                        break;
+                    case MENU_STATUS_LOSE:
+                        LOSE_MENU.handleEvent(e);
+                        INGAME_MENU.handleEvent(e);
+                        break;
+                    case MENU_STATUS_EXIT:
+
+                        break;
                     }
-                    //Character handle event
-                    Otter.handleEvent(e);
-                    //Handle button
-                    //START_MENU.handleEvent(e);
-                    //PAUSE_MENU.handleEvent(e);
-                    //OPTIONS_MENU.handleEvent(e);
-                    INGAME_MENU.handleEvent(e);
                 }
                 SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
                 SDL_RenderClear(gRenderer);
 
-                //Background render
-                bg.render(speedRender);
-
-                vector<SDL_Rect> rect_run = Otter.getColliders();
-                //Temp random
-                for (int i = 0; i < loopEnemy.size(); i++) {
-                    if (!loopEnemy[i].isOver()) {
-                        SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
-                        vector<SDL_Rect> obstaclesClips = loopEnemy[i].getColliders();
-                        loopEnemy[i].render(speedRender);
-                        if (checkCollision(obstaclesClips, rect_run)) {
-                            switch (Otter.getStatus())
-                            {
-                            case RUN:
-                                cout << "run" << endl;
-                                break;
-                            case JUMP:
-                                cout << "jump" << endl;
-                                break;
-                            case FALL:
-                                cout << "fall" << endl;
-                                break;
-                            case FASTLANDING:
-                                cout << "fastlanding" << endl;
-                                break;
-                            }
-                        }
-                    }
-                    else {
-                        int index_ = generateRandomNumber(0, randomDistance.size() - 1);
-                        int distance = randomDistance[index_];
-                        int distanceBetweenTwoObstacles = SCREEN_WIDTH + distance - loopEnemy[(i == 0 ? 1 : 0)].getX();
-                        if (distanceBetweenTwoObstacles >= 600 && distanceBetweenTwoObstacles <= 1500) {
-                            RandomObstacles(loopEnemy[i]);
-                            loopEnemy[i].setX(SCREEN_WIDTH + distance);
-                        }
-                    }
+                mainGameProcess();
+                switch (menuStatus)
+                {
+                case MENU_STATUS_START:
+                    START_MENU.show();
+                    break;
+                case MENU_STATUS_PAUSED:
+                    PAUSE_MENU.show();
+                    break;
+                case MENU_STATUS_OPTIONS:
+                    OPTIONS_MENU.show();
+                    break;
+                case MENU_STATUS_LOSE:
+                    LOSE_MENU.show();
+                    break;
+                case MENU_STATUS_EXIT:
+                    break;
                 }
-                //render Otter
-                Otter.show(gRenderer);
-
-                //Render start menu
-                //START_MENU.show();
-
-                //Render pause menu
-                //PAUSE_MENU.show();
-
-                //Render options menu
-                //OPTIONS_MENU.show();
-
-                //Render ingame menu
-                INGAME_MENU.show();
-
-                //Score render
-                score.process();
-                score.render();
-
-                //Set volume
-                //gSound.setVolumeMusic(50);
-                //gSound.setVolumeChunk(50);
-
                 //render screen
                 SDL_RenderPresent(gRenderer);
             }
@@ -1554,7 +1754,7 @@ void LButton::setPosition(int x, int y)
     mPosition.x = x;
     mPosition.y = y;
 }
-void LButton::handleEvent(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT)
+void LButton::handleEvent(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT,const TO_DO &todo, bool isBack)
 {
     //If mouse event happened
     if (e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
@@ -1598,22 +1798,29 @@ void LButton::handleEvent(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTT
             //Set mouse over sprite
             switch (e->type)
             {
-            case SDL_MOUSEMOTION:
-                mCurrentSprite = BUTTON_SPRITE_MOUSE_OVER_MOTION;
-                break;
-
-            case SDL_MOUSEBUTTONDOWN:
-                mCurrentSprite = BUTTON_SPRITE_MOUSE_DOWN;
-                break;
-
-            case SDL_MOUSEBUTTONUP:
-                mCurrentSprite = BUTTON_SPRITE_MOUSE_UP;
-                break;
+                case SDL_MOUSEMOTION:
+                    mCurrentSprite = BUTTON_SPRITE_MOUSE_OVER_MOTION;
+                    break;
+                case SDL_MOUSEBUTTONDOWN:
+                    mCurrentSprite = BUTTON_SPRITE_MOUSE_DOWN;
+                    if(!isBack) menuPre = menuStatus;
+                    break;
+                case SDL_MOUSEBUTTONUP:
+                    mCurrentSprite = BUTTON_SPRITE_MOUSE_UP;
+                    if (isBack) {
+                        menuStatus = menuPre;
+                    }
+                    else
+                    {
+                        handle(todo);
+                    }
+                    break;
             }
+
         }
     }
 }
-void LButton::handleEventController(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, ControllerStatus& status)
+void LButton::handleEventController(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, ControllerStatus& status, const TO_DO& todo)
 {
     if (e->type == SDL_MOUSEBUTTONDOWN) {
         int x, y;
@@ -1656,12 +1863,14 @@ void LButton::handleEventController(SDL_Event* e, const int& BUTTON_WIDTH, const
         mPosition.x = x - status.x_len;
         if (mPosition.x < THRESHOLD_CONTROLER_LEFT) mPosition.x = THRESHOLD_CONTROLER_LEFT;
         if (mPosition.x + BUTTON_WIDTH > THRESHOLD_CONTROLER_RIGHT) mPosition.x = THRESHOLD_CONTROLER_RIGHT - BUTTON_WIDTH;
+        handle(todo, (double(mPosition.x - THRESHOLD_CONTROLER_LEFT) / (THRESHOLD_CONTROLER_RIGHT - 36 - THRESHOLD_CONTROLER_LEFT))*MIX_MAX_VOLUME);
+
     }
     if (e->type == SDL_MOUSEBUTTONUP) {
         status.isClick = false;
     }
 }
-void LButton::handleEventSwitch(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, bool& isOn) {
+void LButton::handleEventSwitch(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, bool& isOn, const TO_DO& todo) {
     if (e->type == SDL_MOUSEBUTTONDOWN) {
         int x, y;
         SDL_GetMouseState(&x, &y);
@@ -1690,6 +1899,7 @@ void LButton::handleEventSwitch(SDL_Event* e, const int& BUTTON_WIDTH, const int
         }
         if (inside) {
             isOn = (isOn ? false : true);
+            handle(todo);
         }
 
     }
@@ -1823,6 +2033,10 @@ bool LSound::setJumpSound(const string& path) {
     gJumpSound = Mix_LoadWAV(path.c_str());
     return gJumpSound != NULL;
 }
+bool LSound::setLoseSound(const string& path) {
+    gLoseSound = Mix_LoadWAV(path.c_str());
+    return gLoseSound != NULL;
+}
 bool LSound::isPlayingMusic() {
     return Mix_PlayingMusic();
 }
@@ -1849,6 +2063,10 @@ void LSound::PlayJumpSound() {
     Mix_PlayChannel(-1, gJumpSound, 0);
     Mix_VolumeChunk(gJumpSound, volumeChunk);
 }
+void LSound::PlayLoseSound() {
+    Mix_PlayChannel(-1, gLoseSound, 0);
+    Mix_VolumeChunk(gJumpSound, volumeChunk);
+}
 void LSound::setVolumeMusic(const int& v) {
     volumeMusic = v;
     Mix_VolumeMusic(volumeMusic);
@@ -1856,21 +2074,23 @@ void LSound::setVolumeMusic(const int& v) {
 void LSound::setVolumeChunk(const int& v) {
     volumeChunk = v;
     Mix_VolumeChunk(gJumpSound, volumeChunk);
+    Mix_VolumeChunk(gLoseSound, volumeChunk);
 }
 
 //Score
 void Score::process() {
     timeText.str("");
-    timeText << gScore.getTicks() / 500 - startTime;
+    shiftScore();
+    timeText << score - startTime;
 }
 void Score::pause() {
-    if (gScore.isPaused()) gScore.pause();
+    if (!gTimer.isPaused()) gTimer.pause();
 }
 void Score::start() {
-    if (!gScore.isStarted()) gScore.start();
+    if (!gTimer.isStarted()) gTimer.start();
 }
 void Score::reStart() {
-    if (gScore.isStarted()) gScore.start();
+    if (gTimer.isStarted()) gTimer.start();
 }
 void Score::render() {
     if (!gTextTexture.loadFromRenderedText(timeText.str().c_str(), textColor)) {
@@ -1880,10 +2100,43 @@ void Score::render() {
         gTextTexture.render(SCREEN_WIDTH - gTextTexture.getWidth() - 50, 10);
     }
 }
+int Score::getScore() {
+    shiftScore();
+    return score;
+}
+void Score::shiftScore() {
+    score = gTimer.getTicks() / 400;
+}
+void Score::resume() {
+    if (gTimer.isPaused()) gTimer.unpause();
+}
 
 void RandomObstacles(Obstacle& obstacle) {
-    vector <int> randomSrc = { 0,1,2,0,1,2,0,1,2,0,1,2 };
+    vector <int> randomSrc = { 0,1,2,2,1,0,0,1,2,2,1,0};
     int index = generateRandomNumber(0, randomSrc.size() - 1);
     obstacle.setCharacter(*randomListObstacles[randomSrc[index]].getCharacter());
     obstacle.setColliders(randomListObstacles[randomSrc[index]].getColliders());
+}
+int generateRandomNumber(const int min, const int max)
+{
+    srand(time(0));
+    // TODO: Return a random integer number between min and max
+    return rand() % (max - min + 1) + min;
+}
+void increasingDifficultyLevels(int& speedRender, Score& score) {
+    switch (score.getScore())
+    {
+    case 100:
+        speedRender = 12;
+        break;
+    case 200:
+        speedRender = 15;
+        break;
+    case 300:
+        speedRender = 16;
+        break;
+    case 400:
+        speedRender = 20;
+        break;
+    }
 }
