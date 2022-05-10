@@ -51,7 +51,8 @@ enum TO_DO {
     TO_DO_SET_VOL_BGM,
     TO_DO_SET_VOL_SFX,
     TO_DO_TURN_OFF_SOUND,
-    TO_DO_TURN_ON_SOUND
+    TO_DO_TURN_ON_SOUND,
+    TO_DO_BACK_HOME
 };
 void handle(const TO_DO& todo,const double &v=MIX_MAX_VOLUME/2);
 enum Otter_Sheet_Height {
@@ -143,7 +144,7 @@ public:
     void turnOffSound() {
         savedVolumeMusic = volumeMusic;
         savedVolumeChunk = volumeChunk;
-        volumeChunk = volumeChunk = 0;
+        volumeChunk = volumeMusic = 0;
         setVolumeChunk(volumeChunk);
         setVolumeMusic(volumeMusic);
     }
@@ -237,6 +238,9 @@ public:
     void render(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]);
     void renderSwitch(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]);
     void renderController(LTexture& gButtonSpriteSheetTexture);
+    void setPositionX(const int&x) {
+        mPosition.x = x;
+    }
 
 private:
     //Top left position
@@ -391,6 +395,13 @@ public:
         SFX.renderController(SFXTexture);
         BGM.renderController(BGMTexture);
     }
+    void setPositionX_BGM(const int& x) {
+        BGM.setPositionX(x);
+    }
+    void setPositionX_SFX(const int& x) {
+        SFX.setPositionX(x);
+    }
+
 
 };
 gOptionsMenu OPTIONS_MENU;
@@ -398,20 +409,24 @@ gOptionsMenu OPTIONS_MENU;
 class gIngameMenu {
 private:
 public:
-    gIngameMenu() {};
+    gIngameMenu() {
+        pauseIsOn = true;
+        soundIsOn = true;
+        optionsIsOn = false;
+    };
     //Start menu texture
     LTexture PauseTexture;
     LTexture OptionsTexture;
     LTexture SoundTexture;
 
     //status
-    bool pauseIsOn = true;
-    bool soundIsOn = true;
-    bool optionsIsOn = false;
+    bool pauseIsOn;
+    bool soundIsOn;
+    bool optionsIsOn;
 
     //Button
     LButton Pause;
-    LButton Options;
+    LButton Home;
     LButton Sound;
 
     //Clips
@@ -419,14 +434,14 @@ public:
     SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
     SDL_Rect SoundSpriteClips[BUTTON_SPRITE_TOTAL];
     void handleEvent(SDL_Event& e) {
-        Pause.handleEventSwitch(&e, 70, 70, pauseIsOn, TO_DO_PAUSE);
-        Options.handleEventSwitch(&e, 70, 70, optionsIsOn, TO_DO_OPTIONS);
+        Pause.handleEventSwitch(&e, 70, 70, pauseIsOn, (gameStatus == GAME_STATUS_LOSE ? TO_DO_BACK_HOME : (pauseIsOn == true ? TO_DO_PAUSE : TO_DO_RESUME)));
+        Home.handleEventSwitch(&e, 70, 70, optionsIsOn, TO_DO_BACK_HOME);
         Sound.handleEventSwitch(&e, 70, 70, soundIsOn, (soundIsOn==true?TO_DO_TURN_OFF_SOUND: TO_DO_TURN_ON_SOUND));
     }
     void show() {
         //Render button
         Pause.renderSwitch(PauseTexture, PauseSpriteClips);
-        Options.renderSwitch(OptionsTexture, OptionsSpriteClips);
+        Home.renderSwitch(OptionsTexture, OptionsSpriteClips);
         Sound.renderSwitch(SoundTexture, SoundSpriteClips);
     }
 
@@ -1251,7 +1266,7 @@ bool loadMedia() {
         INGAME_MENU.PauseSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
         INGAME_MENU.Pause.setPosition(10, 10);
     }
-    if (!INGAME_MENU.OptionsTexture.loadFromFile("imgs/menu/ingame_menu/options_onclick.png")) {
+    if (!INGAME_MENU.OptionsTexture.loadFromFile("imgs/menu/ingame_menu/home_onclick.png")) {
         success = false;
         cout << "Load switch failed! " << endl;
     }
@@ -1259,7 +1274,7 @@ bool loadMedia() {
     {
         INGAME_MENU.OptionsSpriteClips[SWITCH_SPRITE_MOUSE_ON] = { 0,0,65,65 };
         INGAME_MENU.OptionsSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
-        INGAME_MENU.Options.setPosition(95, 10);
+        INGAME_MENU.Home.setPosition(95, 10);
     }
     if (!INGAME_MENU.SoundTexture.loadFromFile("imgs/menu/ingame_menu/sound_onclick.png")) {
         success = false;
@@ -1482,6 +1497,7 @@ void handle(const TO_DO& todo, const double &v) {
         speedRender = speedRenderSaved;
         menuStatus = MENU_STATUS_PLAYING;
         gameStatus = GAME_STATUS_PLAYING;
+        INGAME_MENU.pauseIsOn = true;
         score.resume();
         break;
     case TO_DO_RESTART:
@@ -1494,10 +1510,11 @@ void handle(const TO_DO& todo, const double &v) {
         menuStatus = MENU_STATUS_OPTIONS;
         break;
     case TO_DO_PAUSE:
-        speedRenderSaved = speedRender;
+        if (speedRender!=0) speedRenderSaved = speedRender;
         speedRender = 0;
         gameStatus = GAME_STATUS_PAUSED;
         menuStatus = MENU_STATUS_PAUSED;
+        INGAME_MENU.pauseIsOn = false;
         score.pause();
         break;
     case TO_DO_EXIT:
@@ -1512,6 +1529,24 @@ void handle(const TO_DO& todo, const double &v) {
     case TO_DO_SET_VOL_SFX:
         gSound.setVolumeChunk(v);
         break;
+    case TO_DO_TURN_ON_SOUND:
+        gSound.turnOnSound();
+        OPTIONS_MENU.setPositionX_BGM(gSound.getVolumeMusic() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT);
+        OPTIONS_MENU.setPositionX_SFX(gSound.getVolumeChunk() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT);
+        INGAME_MENU.soundIsOn = true;
+        break;
+    case TO_DO_TURN_OFF_SOUND:
+        gSound.turnOffSound();
+        OPTIONS_MENU.setPositionX_BGM(THRESHOLD_CONTROLER_LEFT);
+        OPTIONS_MENU.setPositionX_SFX(THRESHOLD_CONTROLER_LEFT);
+        INGAME_MENU.soundIsOn = false;
+        break;
+    case TO_DO_BACK_HOME:
+        score.stop();
+        speedRender = 0;
+        gameStatus = GAME_STATUS_IDLE;
+        menuStatus = MENU_STATUS_START;
+        break;
     }
 
 
@@ -1519,13 +1554,18 @@ void handle(const TO_DO& todo, const double &v) {
 void mainGameProcess() {
     //Background render
     bg.render(speedRender);
-
+    SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
     vector<SDL_Rect> rect_run = Otter.getColliders();
     for (int i = 0; i < loopEnemy.size(); i++) {
         if (!loopEnemy[i].isOver()) {
-            SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
             vector<SDL_Rect> obstaclesClips = loopEnemy[i].getColliders();
+
             loopEnemy[i].render(speedRender);
+            /*for (auto& x : obstaclesClips) {
+                SDL_RenderDrawRect(gRenderer, &x);
+            }*/
+            //Avoid repeat check collision
+            if (menuStatus!=MENU_STATUS_START&& gameStatus!=GAME_STATUS_IDLE&&menuStatus != GAME_STATUS_PAUSED && gameStatus != GAME_STATUS_PAUSED)
             if (checkCollision(obstaclesClips, rect_run)) {
                 score.pause();
                 speedRender = 0;
@@ -1545,10 +1585,13 @@ void mainGameProcess() {
         }
     }
     //render Otter
+
     Otter.show(gRenderer);
+    //for (auto& x : rect_run) {
+    //    SDL_RenderDrawRect(gRenderer, &x);
+    //}
+
     increasingDifficultyLevels(speedRender, score);
-    //INGAME MENU
-    INGAME_MENU.show();
     
     //Score render
     score.process();
@@ -1569,7 +1612,6 @@ int main(int argc, char* argv[])
         {
             SDL_Event e;
             gSound.PlayMusic();
-
             bool isPaused = false;
             while (!quit)
             {
@@ -1581,6 +1623,8 @@ int main(int argc, char* argv[])
                     {
                     case MENU_STATUS_START:
                         START_MENU.handleEvent(e);
+                        if (e.type == SDL_KEYDOWN)
+                            if ((e.key.keysym.sym == SDLK_SPACE) && e.key.repeat == 0) handle(TO_DO_START);
                         break;
                     case MENU_STATUS_PLAYING:
                         Otter.handleEvent(e);
@@ -1601,6 +1645,8 @@ int main(int argc, char* argv[])
                     case MENU_STATUS_LOSE:
                         LOSE_MENU.handleEvent(e);
                         INGAME_MENU.handleEvent(e);
+                        if (e.type == SDL_KEYDOWN)
+                            if (e.key.keysym.sym == SDLK_ESCAPE && e.key.repeat == 0) handle(TO_DO_BACK_HOME);
                         break;
                     case MENU_STATUS_EXIT:
 
@@ -1611,6 +1657,9 @@ int main(int argc, char* argv[])
                 SDL_RenderClear(gRenderer);
 
                 mainGameProcess();
+                if (gameStatus == GAME_STATUS_PLAYING || gameStatus == GAME_STATUS_PAUSED || gameStatus == GAME_STATUS_LOSE) {
+                    INGAME_MENU.show();
+                }
                 switch (menuStatus)
                 {
                 case MENU_STATUS_START:
@@ -1898,7 +1947,6 @@ void LButton::handleEventSwitch(SDL_Event* e, const int& BUTTON_WIDTH, const int
             inside = false;
         }
         if (inside) {
-            isOn = (isOn ? false : true);
             handle(todo);
         }
 
