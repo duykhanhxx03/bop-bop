@@ -33,6 +33,7 @@ enum MENU_STATUS {
     MENU_STATUS_PLAYING,
     MENU_STATUS_PAUSED,
     MENU_STATUS_OPTIONS,
+    MENU_STATUS_COUNTDOWN,
     MENU_STATUS_LOSE,
     MENU_STATUS_EXIT
 };
@@ -52,7 +53,8 @@ enum TO_DO {
     TO_DO_SET_VOL_SFX,
     TO_DO_TURN_OFF_SOUND,
     TO_DO_TURN_ON_SOUND,
-    TO_DO_BACK_HOME
+    TO_DO_BACK_HOME,
+    TO_DO_COUNTDOWN
 };
 void handle(const TO_DO& todo,const double &v=MIX_MAX_VOLUME/2);
 enum Otter_Sheet_Height {
@@ -109,12 +111,14 @@ SDL_Window* gWindow = NULL;
 SDL_Renderer* gRenderer = NULL;
 
 TTF_Font* gFont = NULL;
+TTF_Font* gFontBigSize = NULL;
 
 class LSound {
 private:
     Mix_Music* gBgm;
-    Mix_Chunk* gJumpSound;
     Mix_Chunk* gLoseSound;
+    Mix_Chunk* gJumpSound;
+    Mix_Chunk* gPassSound;
     //MIX_MAX_VOLUME=128
     int volumeMusic = 64;
     int volumeChunk = 64;
@@ -122,13 +126,11 @@ private:
     int savedVolumeMusic = volumeMusic;
     int savedVolumeChunk = volumeChunk;
 public:
-    bool setBgm(const string& path);
-    bool setJumpSound(const string& path);
-    bool setLoseSound(const string& path);
     bool isPlayingMusic();
     bool isPausedMusic();
     void StopMusic();
     void PlayMusic();
+    void PlayPassSound();
     void PauseMusic();
     void ResumeMusic();
     void PlayJumpSound();
@@ -154,6 +156,7 @@ public:
         setVolumeChunk(volumeChunk);
         setVolumeMusic(volumeMusic);
     }
+    void loadMedia(bool& success);
 };
 LSound gSound;
 
@@ -198,7 +201,7 @@ public:
 
 #if defined(SDL_TTF_MAJOR_VERSION)
     //Creates image from font string
-    bool loadFromRenderedText(std::string textureText, SDL_Color textColor);
+    bool loadFromRenderedText(std::string textureText, SDL_Color textColor, TTF_Font* gFont);
 #endif
 
     //set color mudulation
@@ -218,6 +221,64 @@ private:
     int mWidth;
     int mHeight;
 };
+
+class CountDown {
+private:
+    int count;
+    bool isEnd;
+    stringstream timeText;
+    LTexture textCountDown;
+    LTimer timer;
+    SDL_Color textColor = { 255, 255, 255, 255 };
+public:
+    void init() {
+        count = 3;
+        isEnd = false;
+        timer.start();
+        timeText.str("");
+    }
+    CountDown() {
+        init();
+    }
+    void render() {
+        textCountDown.render((SCREEN_WIDTH - textCountDown.getWidth()) / 2, (SCREEN_HEIGHT - textCountDown.getHeight()) / 2);
+    }
+    void show() {
+        timeText.str("");
+        if (!isEnd) {
+            if (timer.getTicks() / 400 == 1) {
+                if (count == -1) {
+                    isEnd = true;
+                    timer.stop();
+                    timeText.str("");
+                    textCountDown.free();
+                }
+                else
+                {
+                    if (count == 0) {
+                        timeText << "GO!";
+                        timer.start();
+                        --count;
+                    }
+                    else {
+                        timeText << count;
+                        timer.start();
+                        --count;
+                    }
+                    if (!textCountDown.loadFromRenderedText(timeText.str(), textColor, gFontBigSize)) {
+                        cout << "Failed to load text" << endl;
+                    }
+                }
+            }
+        }
+        //Render textures
+        render();
+    }
+    bool isEndCountDown() {
+        return isEnd;
+    }
+};
+CountDown countDown;
 
 //Button
 class LButton
@@ -274,7 +335,7 @@ public:
     SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
     SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
     void handleEvent(SDL_Event& e) {
-        Start.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT,TO_DO_START);
+        Start.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_START);
         Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_OPTIONS);
         Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT);
     }
@@ -322,7 +383,7 @@ public:
     SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
     void handleEvent(SDL_Event& e) {
         ReStart.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_RESTART);
-        Resume.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_RESUME);
+        Resume.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_COUNTDOWN);
         Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_OPTIONS);
         Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT);
     }
@@ -975,19 +1036,6 @@ public:
     }
     void move()
     {
-        //Show info
-        //static int pre_status = -1;
-        //if (pre_status != status) {
-
-        //     cout <<"status: " << status << endl;
-        //     cout <<"Current character height: "<< getCurrentCharHeight() << endl;
-        //     cout << "is on ground? " <<isOnGround() << endl;
-        //     cout << "current pos Y " << mPosY << endl;
-        //     //if (isOnGround()) status = 0;
-        //     cout << "--end--" << endl;
-        //     pre_status = status;
-        //}
-
         //Processing
 
         shiftColliders();
@@ -1017,7 +1065,6 @@ public:
             //timeJump.stop();
             timeJump.start();
             isFall = true;
-            //cout << "fall_1" << endl;
         }
         if (status == FALL) {
             if (mPosY <= GROUND - FALL_SHEET_HEIGHT) {
@@ -1025,7 +1072,6 @@ public:
                 double deltaTime = timeJump.getTicks() / 1000.f;
                 mPosY += mVelY * (deltaTime)+0.5 * 40 * (deltaTime * deltaTime);
                 shiftColliders();
-                //cout << "fall_2" << endl;
             }
             else {
                 mPosY = GROUND - RUN_SHEET_HEIGHT;
@@ -1112,26 +1158,23 @@ bool loadMedia() {
     bool success = true;
 
     //Font
-    gFont = TTF_OpenFont("font/Planes_ValMore.ttf", 48);
+    gFont = TTF_OpenFont("font/Planes_ValMore.ttf", 50);
     if (gFont == NULL)
     {
-        cout << "Failed to load lazy font! SDL_ttf Error: %s\n" << TTF_GetError();
+        cout << "Failed to load Planes_ValMore font! SDL_ttf Error: %s\n" << TTF_GetError();
+        success = false;
+    }
+
+    gFontBigSize = TTF_OpenFont("font/Planes_ValMore.ttf", 120);
+    if (gFont == NULL)
+    {
+        cout << "Failed to load Planes_ValMore font! SDL_ttf Error: %s\n" << TTF_GetError();
         success = false;
     }
 
     //Sound
-    if (!gSound.setBgm("sound/bgm.wav")) {
-        cout << "Failed to load bgm" << Mix_GetError() << endl;
-        success = false;
-    }
-    if (!gSound.setJumpSound("sound/jumpsound.wav")) {
-        cout << "Failed to load jumpsound" << Mix_GetError() << endl;
-        success = false;
-    }
-    if (!gSound.setLoseSound("sound/losesound.wav")) {
-        cout << "Failed to load losesound" << Mix_GetError() << endl;
-        success = false;
-    }
+    gSound.loadMedia(success);
+
     //START MENU
     if (!START_MENU.MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
         cout << "Load menu_bg that bai! " << endl;
@@ -1547,9 +1590,10 @@ void handle(const TO_DO& todo, const double &v) {
         gameStatus = GAME_STATUS_IDLE;
         menuStatus = MENU_STATUS_START;
         break;
+    case TO_DO_COUNTDOWN:
+        menuStatus = MENU_STATUS_COUNTDOWN;
+        countDown.init();
     }
-
-
 }
 void mainGameProcess() {
     //Background render
@@ -1636,7 +1680,7 @@ int main(int argc, char* argv[])
                         PAUSE_MENU.handleEvent(e);
                         INGAME_MENU.handleEvent(e);
                         if (e.type == SDL_KEYDOWN)
-                            if (e.key.keysym.sym == SDLK_ESCAPE && e.key.repeat == 0) handle(TO_DO_RESUME);
+                            if (e.key.keysym.sym == SDLK_ESCAPE && e.key.repeat == 0) handle(TO_DO_COUNTDOWN);
                         break;
                     case MENU_STATUS_OPTIONS:
                         OPTIONS_MENU.handleEvent(e);
@@ -1662,20 +1706,23 @@ int main(int argc, char* argv[])
                 }
                 switch (menuStatus)
                 {
-                case MENU_STATUS_START:
-                    START_MENU.show();
-                    break;
-                case MENU_STATUS_PAUSED:
-                    PAUSE_MENU.show();
-                    break;
-                case MENU_STATUS_OPTIONS:
-                    OPTIONS_MENU.show();
-                    break;
-                case MENU_STATUS_LOSE:
-                    LOSE_MENU.show();
-                    break;
-                case MENU_STATUS_EXIT:
-                    break;
+                    case MENU_STATUS_START:
+                        START_MENU.show();
+                        break;
+                    case MENU_STATUS_PAUSED:
+                        PAUSE_MENU.show();
+                        break;
+                    case MENU_STATUS_OPTIONS:
+                        OPTIONS_MENU.show();
+                        break;
+                    case MENU_STATUS_LOSE:
+                        LOSE_MENU.show();
+                        break;
+                    case MENU_STATUS_EXIT:
+                        break;
+                    case MENU_STATUS_COUNTDOWN:
+                        if (!countDown.isEndCountDown()) countDown.show(); else handle(TO_DO_RESUME);
+                        break;
                 }
                 //render screen
                 SDL_RenderPresent(gRenderer);
@@ -1754,7 +1801,7 @@ int LTexture::getWidth() {
     return mWidth;
 }
 #if defined(SDL_TTF_MAJOR_VERSION)
-bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor)
+bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor, TTF_Font* gFont)
 {
     //Get rid of preexisting texture
     free();
@@ -2073,18 +2120,6 @@ bool LTimer::isPaused()
 }
 
 //Game sound
-bool LSound::setBgm(const string& path) {
-    gBgm = Mix_LoadMUS(path.c_str());
-    return gBgm != NULL;
-}
-bool LSound::setJumpSound(const string& path) {
-    gJumpSound = Mix_LoadWAV(path.c_str());
-    return gJumpSound != NULL;
-}
-bool LSound::setLoseSound(const string& path) {
-    gLoseSound = Mix_LoadWAV(path.c_str());
-    return gLoseSound != NULL;
-}
 bool LSound::isPlayingMusic() {
     return Mix_PlayingMusic();
 }
@@ -2113,7 +2148,11 @@ void LSound::PlayJumpSound() {
 }
 void LSound::PlayLoseSound() {
     Mix_PlayChannel(-1, gLoseSound, 0);
-    Mix_VolumeChunk(gJumpSound, volumeChunk);
+    Mix_VolumeChunk(gLoseSound, volumeChunk);
+}
+void LSound::PlayPassSound() {
+    Mix_PlayChannel(-1, gPassSound, 0);
+    Mix_VolumeChunk(gPassSound, volumeChunk);
 }
 void LSound::setVolumeMusic(const int& v) {
     volumeMusic = v;
@@ -2123,8 +2162,30 @@ void LSound::setVolumeChunk(const int& v) {
     volumeChunk = v;
     Mix_VolumeChunk(gJumpSound, volumeChunk);
     Mix_VolumeChunk(gLoseSound, volumeChunk);
+    Mix_VolumeChunk(gPassSound, volumeChunk);
 }
-
+void LSound::loadMedia(bool& success) {
+    gBgm = Mix_LoadMUS("sound/bgm.wav");
+    if (!gBgm) {
+        cout << "Failed to load bgm" << Mix_GetError() << endl;
+        success = false;
+    }
+    gJumpSound = Mix_LoadWAV("sound/jumpsound.wav");
+    if (!gJumpSound) {
+        cout << "Failed to load jumpsound1" << Mix_GetError() << endl;
+        success = false;
+    }
+    gPassSound = Mix_LoadWAV("sound/passsound.wav");
+    if (!gPassSound) {
+        cout << "Failed to load gPassSound" << Mix_GetError() << endl;
+        success = false;
+    }
+    gLoseSound = Mix_LoadWAV("sound/losesound.wav");
+    if (!gLoseSound) {
+        cout << "Failed to load losesound" << Mix_GetError() << endl;
+        success = false;
+    }
+}
 //Score
 void Score::process() {
     timeText.str("");
@@ -2141,7 +2202,7 @@ void Score::reStart() {
     if (gTimer.isStarted()) gTimer.start();
 }
 void Score::render() {
-    if (!gTextTexture.loadFromRenderedText(timeText.str().c_str(), textColor)) {
+    if (!gTextTexture.loadFromRenderedText(timeText.str().c_str(), textColor, gFont)) {
         cout << "Unable to render time texture!" << endl;
     }
     else {
@@ -2153,7 +2214,7 @@ int Score::getScore() {
     return score;
 }
 void Score::shiftScore() {
-    score = gTimer.getTicks() / 400;
+    score = gTimer.getTicks() / 200;
 }
 void Score::resume() {
     if (gTimer.isPaused()) gTimer.unpause();
@@ -2167,7 +2228,7 @@ void RandomObstacles(Obstacle& obstacle) {
 }
 int generateRandomNumber(const int min, const int max)
 {
-    srand(time(0));
+    srand(time(NULL));
     // TODO: Return a random integer number between min and max
     return rand() % (max - min + 1) + min;
 }
