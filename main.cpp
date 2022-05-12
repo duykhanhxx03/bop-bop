@@ -1907,6 +1907,7 @@ void handle(const TO_DO& todo, const double &v) {
     case TO_DO_COUNTDOWN:
         menuStatus = MENU_STATUS_COUNTDOWN;
         countDown.init();
+        break;
     case TO_DO_EXIT_MENU:
         menuStatus = MENU_STATUS_EXIT;
         break;
