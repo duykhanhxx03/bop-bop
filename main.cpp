@@ -656,7 +656,7 @@ public:
 
 
         //Render Ground
-        static double scrollingOffset_ground = 0;
+        static int scrollingOffset_ground = 0;
         scrollingOffset_ground -= speedRender;
         if (scrollingOffset_ground <= -Ground.getWidth())
         {
@@ -676,13 +676,25 @@ static int count_fastlanding = 0;
 static int count_idle = 0;
 
 const int GROUND = SCREEN_HEIGHT - 70;
-const int JUMP_MAX = 270;
+const int JUMP_MAX = 260;
 const double GRAVITY = 120;
 
 //Obstacles
-LTexture mShroom;
-LTexture mPlantRed;
-LTexture mPlantViolet;
+LTexture mShroom_big;
+LTexture mShroom_medium;
+LTexture mShroom_small;
+
+LTexture mPlantViolet_big;
+LTexture mPlantViolet_medium;
+LTexture mPlantViolet_small;
+
+LTexture mPlantRed_small;
+LTexture mPlantRed_medium;
+LTexture mPlantRed_big;
+
+
+LTexture mMaleBee;
+LTexture mFemaleBee;
 
 class Obstacle {
 private:
@@ -690,13 +702,18 @@ private:
     vector <SDL_Rect> mColliders_offset;
     LTexture* character;
 public:
+    vector <SDL_Rect> mSpritesClips;
+    SDL_Rect* mCurrentClips;
 
     int mPosX;
     int mPosY;
+    int frame;
     Obstacle() {
         mPosX = 0;
         character = NULL;
         mPosY = 0;
+        mCurrentClips = NULL;
+        frame = 0;
     }
     Obstacle(LTexture& texture, const int& n, const vector<SDL_Rect>& Colliders) {
         character = &texture;
@@ -709,6 +726,12 @@ public:
     vector<SDL_Rect> getColliders() {
         return mColliders;
     }
+    void setSpritesClips(const vector<SDL_Rect>& spritesClips) {
+        mSpritesClips = spritesClips;
+    }
+    vector<SDL_Rect> getSpritesClips() {
+        return mSpritesClips;
+    }
     void setColliders(const vector<SDL_Rect>& Colliders) {
         mColliders = mColliders_offset = Colliders;
         shiftColliders(mColliders);
@@ -716,15 +739,22 @@ public:
     void setX(const int& n) {
         mPosX = n;
     }
+    void setY(const int& n) {
+        mPosY = n;
+    }
+    int getX() const {
+        return mPosX;
+    }
+    int getY() const {
+        return mPosY;
+    }
     int getWidth() const {
         return character->getWidth();
     }
     int getHeight() const {
         return character->getHeight();
     }
-    int getX() const {
-        return mPosX;
-    }
+    
     void setCharacter(LTexture& texture) {
         character = &texture;
         mPosY = SCREEN_HEIGHT - 80 - character->getHeight() + 5;
@@ -736,8 +766,16 @@ public:
         mPosX -= speedRender;
         shiftColliders(mColliders);
     }
-    void render(int speedRender) {
+    void render() {
         character->render(mPosX, mPosY);
+        move();
+    }
+    void show() {
+        if (++frame / 7 > mSpritesClips.size()-1) {
+            frame = 0;
+        }
+        mCurrentClips = &mSpritesClips[frame/ 7];
+        character->render(mPosX, mPosY, mCurrentClips);
         move();
     }
     bool isOver() {
@@ -762,18 +800,27 @@ public:
     }
 };
 enum INDEX_LIST_OBSTACLES {
-    SHROOM = 0,
-    PLANTRED = 1,
-    PLANTVIOLET = 2,
-    OBSTACLES_TOTAL = 3
+    SHROOM,
+    PLANTRED,
+    PLANTVIOLET,
+    GOGLEEYESBEE,
+    OBSTACLES_TOTAL = 4
 };
 class ObstacleProperties {
 private:
     LTexture* character;
     vector<SDL_Rect> mColliders;
+
+    vector <SDL_Rect> mSpritesClips;
 public:
     vector<SDL_Rect> getColliders() {
         return mColliders;
+    }
+    void setSpritesClips(const vector<SDL_Rect>& spritesClips) {
+        mSpritesClips = spritesClips;
+    }
+    vector<SDL_Rect> getSpritesClips() {
+        return mSpritesClips;
     }
     void setColliders(const vector<SDL_Rect>& Colliders) {
         mColliders = Colliders;
@@ -785,9 +832,11 @@ public:
         return character;
     }
 };
-vector <ObstacleProperties> randomListObstacles;
+vector <ObstacleProperties> randomListObstaclesPlant;
+vector <ObstacleProperties> randomListObstaclesAnimal;
+
 int generateRandomNumber(const int min, const int max);
-void RandomObstacles(Obstacle& obstacle);
+void RandomObstacles(Obstacle& obstacle,vector <ObstacleProperties>& randomListObstacles);
 
 class gCharacter {
 private:
@@ -1041,7 +1090,7 @@ public:
         shiftColliders();
         //Fast landing
         if (status == FASTLANDING) {
-            mPosY += 30;
+            mPosY += 40;
             shiftColliders();
             if (mPosY > GROUND - FALL_SHEET_HEIGHT)
             {
@@ -1156,7 +1205,6 @@ bool init() {
 
 bool loadMedia() {
     bool success = true;
-
     //Font
     gFont = TTF_OpenFont("font/Planes_ValMore.ttf", 50);
     if (gFont == NULL)
@@ -1357,32 +1405,149 @@ bool loadMedia() {
     }
 
     //Shroom enemy mShroom
-    if (!mShroom.loadFromFile("imgs/obstacle/shroom.png")) {
-        cout << "Load shroom enemy that bai!" << endl;
+    if (!mShroom_big.loadFromFile("imgs/obstacle/shroom_big.png")) {
+        cout << "Load shroom big enemy that bai!" << endl;
         success = false;
     }
     else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,79,90}
+        };
         vector <SDL_Rect> Colliders = {
-                {7,3,39,3},
-                {4,6,45,3},
-                {1,9,51,3},
-                {1,12,51,2},
-                {0,14,53,10},
-                {1,24,51,3},
-                {3,27,47,3},
-                {6,30,41,3},
-                {9,33,35,26}
+            {19,0,40,4},
+            {11,4,57,5},
+            {7,9,65,5},
+            {2,14,75,7},
+            {0,20,79,16},
+            {2,36,75,7},
+            {6,43,67,5},
+            {13,48,53,42}
         };
         ObstacleProperties buffer;
-        buffer.setCharacter(mShroom);
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mShroom_big);
         buffer.setColliders(Colliders);
-        randomListObstacles.push_back(buffer);
+        randomListObstaclesPlant.push_back(buffer);
     }
-    if (!mPlantRed.loadFromFile("imgs/obstacle/plantred.png")) {
+    if (!mShroom_medium.loadFromFile("imgs/obstacle/shroom_medium.png")) {
+        cout << "Load shroom small enemy that bai!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,66,75}
+        };
+        vector <SDL_Rect> Colliders = {
+            {16,0,33,4},
+            {9,4,48,4},
+            {6,8,54,4},
+            {1,12,63,5},
+            {0,17,66,13},
+            {1,30,64,6},
+            {5,36,56,4},
+            {11,40,44,35}
+        };
+        ObstacleProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mShroom_medium);
+        buffer.setColliders(Colliders);
+        randomListObstaclesPlant.push_back(buffer);
+    }
+    if (!mShroom_small.loadFromFile("imgs/obstacle/shroom_small.png")) {
+        cout << "Load shroom small enemy that bai!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,53,60}
+        };
+        vector <SDL_Rect> Colliders = {
+            {13,0,27,3},
+            {7,3,39,3},
+            {4,6,45,3},
+            {1,9,51,3},
+            {1,12,51,2},
+            {0,14,53,10},
+            {1,24,51,3},
+            {3,27,47,3},
+            {6,30,41,3},
+            {9,33,35,26}
+        };
+        ObstacleProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mShroom_small);
+        buffer.setColliders(Colliders);
+        randomListObstaclesPlant.push_back(buffer);
+    }
+    if (!mPlantRed_big.loadFromFile("imgs/obstacle/plantred_big.png")) {
         cout << "Load plantred enemy that bai!" << endl;
         success = false;
     }
     else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,80,90}
+        };
+        vector <SDL_Rect> Colliders = {
+            {27,0,17,3},
+            {25,3,23,3},
+            {25,6,25,3},
+            {24,9,29,3},
+            {9,12,60,3},
+            {7,15,64,3},
+            {7,18,67,8},
+            {3,27,72,6},
+            {1,33,73,4},
+            {0,37,77,5},
+            {0,42,80,6},
+            {1,47,79,6},
+            {3,53,74,7},
+            {4,60,55,8},
+            {20,70,53,20}
+        };
+        ObstacleProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantRed_big);
+        buffer.setColliders(Colliders);
+        randomListObstaclesPlant.push_back(buffer);
+    }
+    if (!mPlantRed_medium.loadFromFile("imgs/obstacle/plantred_medium.png")) {
+        cout << "Load plantred enemy that bai!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,66,75}
+        };
+        vector <SDL_Rect> Colliders = {
+            {22,0,16,3},
+            {21,3,19,3},
+            {20,6,23,4},
+            {6,10,53,4},
+            {6,14,55,8},
+            {4,22,58,3},
+            {2,25,60,3},
+            {1,28,60,3},
+            {0,31,64,3},
+            {0,34,66,6},
+            {1,40,65,5},
+            {2,45,61,5},
+            {3,50,46,6},
+            {17,58,43,17}
+        };
+        ObstacleProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantRed_medium);
+        buffer.setColliders(Colliders);
+        randomListObstaclesPlant.push_back(buffer);
+    }
+    if (!mPlantRed_small.loadFromFile("imgs/obstacle/plantred_small.png")) {
+        cout << "Load plantred enemy that bai!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,53,60}
+        };
         vector <SDL_Rect> Colliders = {
             {18,0,11,2},
             {17,2,15,2},
@@ -1402,16 +1567,69 @@ bool loadMedia() {
             {13,46,35,14}
         };
         ObstacleProperties buffer;
-        buffer.setCharacter(mPlantRed);
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantRed_small);
         buffer.setColliders(Colliders);
-        randomListObstacles.push_back(buffer);
+        randomListObstaclesPlant.push_back(buffer);
     }
-    if (!mPlantViolet.loadFromFile("imgs/obstacle/plantviolet.png")) {
+
+    if (!mPlantViolet_big.loadFromFile("imgs/obstacle/plantviolet_big.png")) {
         cout << "Load plantviolet enemy that bai!" << endl;
         success = false;
     }
     else
     {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,79,90}
+        };
+        vector <SDL_Rect> Colliders = {
+            {6,70,67,20},
+            {12,56,55,15},
+            {0,50,79,6},
+            {2,42,75,8},
+            {1,21,77,21},
+            {2,12,75,9},
+            {0,0,79,12}
+        };
+        ObstacleProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantViolet_big);
+        buffer.setColliders(Colliders);
+        randomListObstaclesPlant.push_back(buffer);
+    }
+    if (!mPlantViolet_medium.loadFromFile("imgs/obstacle/plantviolet_medium.png")) {
+        cout << "Load plantviolet enemy that bai!" << endl;
+        success = false;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,66,75}
+        };
+        vector <SDL_Rect> Colliders = {
+            {5,58,56,17},
+            {10,47,47,11},
+            {0,42,66,5},
+            {2,36,62,6},
+            {1,18,64,19},
+            {1,10,64,8},
+            {0,0,66,10}
+        };
+        ObstacleProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantViolet_medium);
+        buffer.setColliders(Colliders);
+        randomListObstaclesPlant.push_back(buffer);
+    }
+    if (!mPlantViolet_small.loadFromFile("imgs/obstacle/plantviolet_small.png")) {
+        cout << "Load plantviolet enemy that bai!" << endl;
+        success = false;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,53,60}
+        };
         vector <SDL_Rect> Colliders = {
             {0,0,53,38},
             {8,37,37,9},
@@ -1419,10 +1637,48 @@ bool loadMedia() {
             {4,52,45,8}
         };
         ObstacleProperties buffer;
-        buffer.setCharacter(mPlantViolet);
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantViolet_small);
         buffer.setColliders(Colliders);
-        randomListObstacles.push_back(buffer);
+        randomListObstaclesPlant.push_back(buffer);
     }
+    if (!mMaleBee.loadFromFile("imgs/obstacle/malebee.png")) {
+        cout << "Load mGogleEyesBee enemy that bai!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,61,40},
+            {62,0,61,40}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,2,55,36}
+        };
+        ObstacleProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mMaleBee);
+        buffer.setColliders(Colliders);
+        randomListObstaclesAnimal.push_back(buffer);
+    }
+    if (!mFemaleBee.loadFromFile("imgs/obstacle/femalebee.png")) {
+        cout << "Load mGogleEyesBee enemy that bai!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,61,40},
+            {62,0,61,40}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,2,55,36}
+        };
+        ObstacleProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mFemaleBee);
+        buffer.setColliders(Colliders);
+        randomListObstaclesAnimal.push_back(buffer);
+    }
+
     //Otter
     if (!Otter.run.loadFromFile("imgs/characters/Otter/Run.png")) {
         cout << "Load Otter run that bai!" << endl;
@@ -1510,19 +1766,19 @@ void close() {
 }
 //DECLARE
 vector <int> randomDistance = { 100, 300, 500, 200, 400};
-Obstacle one, two;
+Obstacle firstPlant, secondPlant;
 vector <Obstacle> loopEnemy;
 void mainGameInit() {
-    //first obstacle
-    RandomObstacles(one);
-    one.setX(SCREEN_WIDTH);
+    //first plant obstacle
+    RandomObstacles(firstPlant, randomListObstaclesPlant);
+    firstPlant.setX(SCREEN_WIDTH);
 
-    //second obstacle
-    RandomObstacles(two);
-    two.setX(SCREEN_WIDTH+ SCREEN_WIDTH);
+    //second plant obstacle
+    RandomObstacles(secondPlant, randomListObstaclesPlant);
+    secondPlant.setX(SCREEN_WIDTH+ SCREEN_WIDTH);
 
     //set loopEnemy
-    loopEnemy = { one, two };
+    loopEnemy = { firstPlant, secondPlant };
     if (!score.isStarted()) {
         score.start();
         speedRender = 10;
@@ -1598,19 +1854,18 @@ void handle(const TO_DO& todo, const double &v) {
 void mainGameProcess() {
     //Background render
     bg.render(speedRender);
-    SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0x00, 0xFF);
     vector<SDL_Rect> rect_run = Otter.getColliders();
     for (int i = 0; i < loopEnemy.size(); i++) {
         if (!loopEnemy[i].isOver()) {
-            vector<SDL_Rect> obstaclesClips = loopEnemy[i].getColliders();
+            vector<SDL_Rect> rect_obstacles = loopEnemy[i].getColliders();
 
-            loopEnemy[i].render(speedRender);
-            /*for (auto& x : obstaclesClips) {
+            loopEnemy[i].show();
+            /*for (auto& x : rect_obstacles) {
                 SDL_RenderDrawRect(gRenderer, &x);
             }*/
             //Avoid repeat check collision
             if (menuStatus!=MENU_STATUS_START&& gameStatus!=GAME_STATUS_IDLE&&menuStatus != GAME_STATUS_PAUSED && gameStatus != GAME_STATUS_PAUSED)
-            if (checkCollision(obstaclesClips, rect_run)) {
+            if (checkCollision(rect_obstacles, rect_run)) {
                 score.pause();
                 speedRender = 0;
                 if (gameStatus == GAME_STATUS_PLAYING) gSound.PlayLoseSound();
@@ -1624,7 +1879,7 @@ void mainGameProcess() {
             int distanceBetweenTwoObstacles = SCREEN_WIDTH + distance - loopEnemy[(i == 0 ? 1 : 0)].getX();
             if (distanceBetweenTwoObstacles >= 600 && distanceBetweenTwoObstacles <= 1500) {
                 loopEnemy[i].setX(SCREEN_WIDTH + distance);
-                RandomObstacles(loopEnemy[i]);
+                RandomObstacles(loopEnemy[i], randomListObstaclesPlant);
             }
         }
     }
@@ -1634,9 +1889,7 @@ void mainGameProcess() {
     //for (auto& x : rect_run) {
     //    SDL_RenderDrawRect(gRenderer, &x);
     //}
-
     increasingDifficultyLevels(speedRender, score);
-    
     //Score render
     score.process();
     score.render();
@@ -1644,6 +1897,8 @@ void mainGameProcess() {
 
 int main(int argc, char* argv[])
 {
+
+    srand(time(NULL));
     if (!init()) {
         cout << "Failed to initialize! " << endl;
     }
@@ -2208,7 +2463,7 @@ void Score::render() {
     else {
         gTextTexture.render(SCREEN_WIDTH - gTextTexture.getWidth() - 50, 10);
     }
-}
+} 
 int Score::getScore() {
     shiftScore();
     return score;
@@ -2220,15 +2475,15 @@ void Score::resume() {
     if (gTimer.isPaused()) gTimer.unpause();
 }
 
-void RandomObstacles(Obstacle& obstacle) {
-    vector <int> randomSrc = { 0,1,2,2,1,0,0,1,2,2,1,0};
-    int index = generateRandomNumber(0, randomSrc.size() - 1);
-    obstacle.setCharacter(*randomListObstacles[randomSrc[index]].getCharacter());
-    obstacle.setColliders(randomListObstacles[randomSrc[index]].getColliders());
+void RandomObstacles(Obstacle& obstacle,vector <ObstacleProperties> &randomListObstacles) {
+    int index = generateRandomNumber(0, randomListObstacles.size() - 1);
+
+    obstacle.setCharacter(*randomListObstacles[index].getCharacter());
+    obstacle.setColliders(randomListObstacles[index].getColliders());
+    obstacle.setSpritesClips(randomListObstacles[index].getSpritesClips());
 }
 int generateRandomNumber(const int min, const int max)
 {
-    srand(time(NULL));
     // TODO: Return a random integer number between min and max
     return rand() % (max - min + 1) + min;
 }
@@ -2236,15 +2491,19 @@ void increasingDifficultyLevels(int& speedRender, Score& score) {
     switch (score.getScore())
     {
     case 100:
+        if (speedRender == 10) gSound.PlayPassSound();
         speedRender = 12;
         break;
     case 200:
+        if (speedRender == 12) gSound.PlayPassSound();
         speedRender = 15;
         break;
     case 300:
+        if (speedRender == 15) gSound.PlayPassSound();
         speedRender = 16;
         break;
     case 400:
+        if (speedRender == 16) gSound.PlayPassSound();
         speedRender = 20;
         break;
     }
