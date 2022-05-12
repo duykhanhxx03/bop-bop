@@ -47,6 +47,7 @@ enum TO_DO {
     TO_DO_RESUME,
     TO_DO_RESTART,
     TO_DO_PAUSE,
+    TO_DO_EXIT_MENU,
     TO_DO_EXIT,
     TO_DO_OPTIONS,
     TO_DO_SET_VOL_BGM,
@@ -337,7 +338,7 @@ public:
     void handleEvent(SDL_Event& e) {
         Start.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_START);
         Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_OPTIONS);
-        Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT);
+        Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT_MENU);
     }
     void show() {
         static int alpha = 0;
@@ -385,7 +386,7 @@ public:
         ReStart.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_RESTART);
         Resume.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_COUNTDOWN);
         Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_OPTIONS);
-        Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT);
+        Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT_MENU);
     }
     void show() {
         static int alpha = 0;
@@ -525,6 +526,37 @@ public:
 };
 gLoseMenu LOSE_MENU;
 
+class gExitMenu {
+private:
+public:
+    gExitMenu() {};
+    //Start menu texture
+    LTexture ExitMenuBox;
+    LTexture ButtonTexture;
+
+    //Button
+    LButton Yes;
+    LButton No;
+
+    //Clips
+    SDL_Rect YesSpriteClips[BUTTON_SPRITE_TOTAL];
+    SDL_Rect NoSpriteClips[BUTTON_SPRITE_TOTAL];
+    void handleEvent(SDL_Event& e) {
+        Yes.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT);
+        No.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_BACK, true);
+    }
+    void show() {
+
+        //Render start menu box
+        ExitMenuBox.render((SCREEN_WIDTH - ExitMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - ExitMenuBox.getHeight()) / 2);
+
+        //Render button
+        Yes.render(ButtonTexture, YesSpriteClips);
+        No.render(ButtonTexture, NoSpriteClips);
+    }
+
+};
+gExitMenu EXIT_MENU;
 class Score {
 private:
     SDL_Color textColor = { 255, 255, 255, 255 };
@@ -1346,6 +1378,32 @@ bool loadMedia() {
         OPTIONS_MENU.BackSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,469,144,154 };
         OPTIONS_MENU.Back.setPosition(320, 470);
     }
+    
+    //Exit menu
+    if (!EXIT_MENU.ExitMenuBox.loadFromFile("imgs/menu/exit/exitmenubox.png")) {
+        success = false;
+        cout << "load ExitMenuBox failed" << endl;
+    }
+    if (!EXIT_MENU.ButtonTexture.loadFromFile("imgs/menu/exit/Exit_menu_button_sheet.png")) {
+        success = false;
+        cout << "load buttonTexture Exitmenu failed" << endl;
+    }
+    else
+    {
+        EXIT_MENU.NoSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = {0,0,144,154};
+        EXIT_MENU.NoSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,154,144,154 };
+        EXIT_MENU.NoSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,308,144,154 };
+        EXIT_MENU.NoSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,462,144,154 };
+        EXIT_MENU.No.setPosition(410, 450);
+
+        EXIT_MENU.YesSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 156,0,144,154 };
+        EXIT_MENU.YesSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 156,154,144,154 };
+        EXIT_MENU.YesSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 156,308,144,154 };
+        EXIT_MENU.YesSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 156,462,144,154 };
+        EXIT_MENU.Yes.setPosition(725, 450);
+    }
+
+
     //Ingame menu
     if (!INGAME_MENU.PauseTexture.loadFromFile("imgs/menu/ingame_menu/pause_onclick.png")) {
         success = false;
@@ -1849,7 +1907,11 @@ void handle(const TO_DO& todo, const double &v) {
     case TO_DO_COUNTDOWN:
         menuStatus = MENU_STATUS_COUNTDOWN;
         countDown.init();
+    case TO_DO_EXIT_MENU:
+        menuStatus = MENU_STATUS_EXIT;
+        break;
     }
+
 }
 void mainGameProcess() {
     //Background render
@@ -1917,7 +1979,7 @@ int main(int argc, char* argv[])
                 while (SDL_PollEvent(&e) != 0) {
                     if (e.type == SDL_QUIT) {
                         quit = true;
-                    }   
+                    } 
                     switch (menuStatus)
                     {
                     case MENU_STATUS_START:
@@ -1948,7 +2010,7 @@ int main(int argc, char* argv[])
                             if (e.key.keysym.sym == SDLK_ESCAPE && e.key.repeat == 0) handle(TO_DO_BACK_HOME);
                         break;
                     case MENU_STATUS_EXIT:
-
+                        EXIT_MENU.handleEvent(e);
                         break;
                     }
                 }
@@ -1974,11 +2036,13 @@ int main(int argc, char* argv[])
                         LOSE_MENU.show();
                         break;
                     case MENU_STATUS_EXIT:
+                        EXIT_MENU.show();
                         break;
                     case MENU_STATUS_COUNTDOWN:
                         if (!countDown.isEndCountDown()) countDown.show(); else handle(TO_DO_RESUME);
                         break;
                 }
+                
                 //render screen
                 SDL_RenderPresent(gRenderer);
             }
