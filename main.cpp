@@ -3,6 +3,7 @@
 #include <iostream>
 #include <ctime>
 #include <cstdlib>
+#include <fstream>
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <SDL_image.h>
@@ -121,8 +122,8 @@ private:
     Mix_Chunk* gJumpSound;
     Mix_Chunk* gPassSound;
     //MIX_MAX_VOLUME=128
-    int volumeMusic = 64;
-    int volumeChunk = 64;
+    int volumeMusic = 128;
+    int volumeChunk = 128;
     
     int savedVolumeMusic = volumeMusic;
     int savedVolumeChunk = volumeChunk;
@@ -708,7 +709,7 @@ static int count_fastlanding = 0;
 static int count_idle = 0;
 
 const int GROUND = SCREEN_HEIGHT - 70;
-const int JUMP_MAX = 260;
+const int JUMP_MAX = 255;
 const double GRAVITY = 120;
 
 //Obstacles
@@ -1135,7 +1136,7 @@ public:
         }
 
         if (status == JUMP && mPosY >= JUMP_MAX) {
-            mVelY = 220;
+            mVelY = 240;
             double deltaTime = timeJump.getTicks() / 1000.f;
             mPosY += -(mVelY * (deltaTime)-0.5 * 40 * (deltaTime * deltaTime));
             shiftColliders();
@@ -1149,7 +1150,7 @@ public:
         }
         if (status == FALL) {
             if (mPosY <= GROUND - FALL_SHEET_HEIGHT) {
-                mVelY = 90;
+                mVelY = 95;
                 double deltaTime = timeJump.getTicks() / 1000.f;
                 mPosY += mVelY * (deltaTime)+0.5 * 40 * (deltaTime * deltaTime);
                 shiftColliders();
@@ -1339,6 +1340,10 @@ bool loadMedia() {
     }
 
     //OPTIONS MENU
+    double savedVolumeChunk, savedVolumeMusic;
+    fstream soundSavedInfo("sound/VOLUMEINFO.txt", ios::in);
+    soundSavedInfo >> savedVolumeMusic >> savedVolumeChunk;
+    soundSavedInfo.close();
     if (!OPTIONS_MENU.OptionsMenuBox.loadFromFile("imgs/menu/options/optionsmenubox.png")) {
         success = false;
         cout << "Load OptionsMenuBox failed! " << endl;
@@ -1349,14 +1354,16 @@ bool loadMedia() {
     }
     else
     {
-        OPTIONS_MENU.BGM.setPosition(700, 385);
+        OPTIONS_MENU.BGM.setPosition(savedVolumeMusic, 385);
+        gSound.setVolumeMusic((double(savedVolumeMusic - THRESHOLD_CONTROLER_LEFT) / (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36)) * 128);
     }
     if (!OPTIONS_MENU.SFXTexture.loadFromFile("imgs/menu/options/button_sfx.png")) {
         success = false;
         cout << "Load SFXTexture failed! " << endl;
     }
     else {
-        OPTIONS_MENU.SFX.setPosition(700, 285);
+        OPTIONS_MENU.SFX.setPosition(savedVolumeChunk, 285);
+        gSound.setVolumeChunk((double(savedVolumeChunk - THRESHOLD_CONTROLER_LEFT) / (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36)) * 128);
     }
     if (!OPTIONS_MENU.MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
         success = false;
@@ -1806,6 +1813,12 @@ bool loadMedia() {
 }
 
 void close() {
+
+    fstream soundSavedInfo("sound/VOLUMEINFO.txt", ios::out);
+    soundSavedInfo << gSound.getVolumeMusic() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT << " "
+        << gSound.getVolumeChunk() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT ;
+    soundSavedInfo.close();
+
     bg.Layer1.free();
     bg.Layer2.free();
     bg.Layer3.free();
@@ -1974,7 +1987,6 @@ int main(int argc, char* argv[])
         {
             SDL_Event e;
             gSound.PlayMusic();
-            bool isPaused = false;
             while (!quit)
             {
                 while (SDL_PollEvent(&e) != 0) {
@@ -2477,12 +2489,14 @@ void LSound::PlayPassSound() {
 void LSound::setVolumeMusic(const int& v) {
     volumeMusic = v;
     Mix_VolumeMusic(volumeMusic);
+    cout << v << endl;
 }
 void LSound::setVolumeChunk(const int& v) {
     volumeChunk = v;
     Mix_VolumeChunk(gJumpSound, volumeChunk);
     Mix_VolumeChunk(gLoseSound, volumeChunk);
     Mix_VolumeChunk(gPassSound, volumeChunk);
+    cout << v << endl;
 }
 void LSound::loadMedia(bool& success) {
     gBgm = Mix_LoadMUS("sound/bgm.wav");
