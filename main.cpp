@@ -22,13 +22,17 @@ int speedRender = 0;
 // 10 12 15 18 20
 int speedRenderSaved = 0;
 int saved_speedRender = 10;
+enum ONOFFSTAR {
+    OFF_STAR = 0,
+    ON_STAR = 1,
+    ONOFF_STAR_TOTAL = 2
+};
 enum GAME_STATUS {
     GAME_STATUS_IDLE,
     GAME_STATUS_PLAYING,
     GAME_STATUS_PAUSED,
     GAME_STATUS_LOSE
 };
-//10 12 15 16
 enum MENU_STATUS {
     MENU_STATUS_START,
     MENU_STATUS_PLAYING,
@@ -58,7 +62,7 @@ enum TO_DO {
     TO_DO_BACK_HOME,
     TO_DO_COUNTDOWN
 };
-void handle(const TO_DO& todo,const double &v=MIX_MAX_VOLUME/2);
+void handle(const TO_DO& todo,const double &v);
 enum Otter_Sheet_Height {
     RUN_SHEET_HEIGHT = 160,
     JUMP_SHEET_HEIGHT = 160,
@@ -114,6 +118,7 @@ SDL_Renderer* gRenderer = NULL;
 
 TTF_Font* gFont = NULL;
 TTF_Font* gFontBigSize = NULL;
+TTF_Font* gFontMedSize = NULL;
 
 class LSound {
 private:
@@ -282,6 +287,65 @@ public:
 };
 CountDown countDown;
 
+class Score {
+private:
+    SDL_Color textColor = { 255, 255, 255, 255 };
+    //Text render
+    LTexture gCurrentScoreTexture;
+    LTexture gHighScoreTexture;
+
+    //Current time start time
+    Uint32 startTime = 0;
+    stringstream timeText;
+    LTimer gTimer;
+
+    //ishighscore
+    bool isHighSc=false;
+    Uint32 score = 0;
+    Uint32 savedScore = 0;
+public:
+    void process();
+    void pause();
+    void start();
+    void reStart();
+    void render();
+    void shiftScore();
+    void resume();
+    void stop() {
+        if (gTimer.isStarted()) gTimer.stop();
+    }
+    void updateHighScore() {
+        timeText.str("");
+        if (score > savedScore) {
+            isHighSc = true;
+            savedScore = score;
+            timeText << "HI: " << savedScore;
+            if (!gHighScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, gFont)) {
+                cout << "Unable to render savedtime texture!" << endl;
+            }
+        }
+        else if (score < savedScore) isHighSc = false;
+    }
+    int getScore();
+    bool isStarted() {
+        return gTimer.isStarted();
+    }
+    void setScoreFromSaved(const Uint32& s) {
+        savedScore = s;
+        timeText << "HI: " << savedScore;
+        if (!gHighScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, gFont)) {
+            cout << "Unable to render savedtime texture!" << endl;
+        }
+    }
+    Uint32 getHighScore() {
+        return savedScore;
+    }
+    bool isHighScore() {
+        return isHighSc;
+    }
+};
+Score score;
+
 //Button
 class LButton
 {
@@ -436,7 +500,7 @@ public:
     SDL_Rect BackSpriteClips[BUTTON_SPRITE_TOTAL];
 
     void handleEvent(SDL_Event& e) {
-        Back.handleEvent(&e, BackTexture.getWidth(), BackTexture.getHeight(), TO_DO_BACK, true);
+        Back.handleEvent(&e,144,154, TO_DO_BACK, true);
         SFX.handleEventController(&e, SFXTexture.getWidth(), SFXTexture.getHeight(), SFXstatus, TO_DO_SET_VOL_SFX);
         BGM.handleEventController(&e, BGMTexture.getWidth(), BGMTexture.getHeight(), BGMstatus, TO_DO_SET_VOL_BGM);
     }
@@ -464,8 +528,6 @@ public:
     void setPositionX_SFX(const int& x) {
         SFX.setPositionX(x);
     }
-
-
 };
 gOptionsMenu OPTIONS_MENU;
 
@@ -511,18 +573,64 @@ public:
 };
 gIngameMenu INGAME_MENU;
 
-class gLoseMenu {
+class gLoseMenu { 
 public:
-    LTexture LoseTexture;
+    SDL_Color textColor = { 255, 255, 255, 255 };
+    LTexture loseMenuBox;
+    LTexture reStartTexture;
+    LTexture fisrtStar[ONOFF_STAR_TOTAL];
+    LTexture secondStar[ONOFF_STAR_TOTAL];
+    LTexture thirdStar[ONOFF_STAR_TOTAL];
+    
+    LTexture tempTexture;
+    LTexture yourScoreTexture;
+    stringstream timeText;
+    LButton reStart;
+    SDL_Rect reStartSpriteClips[BUTTON_SPRITE_TOTAL];
+    
     gLoseMenu() {};
     void handleEvent(SDL_Event& e) {
+        reStart.handleEvent(&e, 144, 154, TO_DO_RESTART);
         if (e.type == SDL_KEYDOWN)
             if (e.key.keysym.sym == SDLK_SPACE && e.key.repeat == 0) {
                 handle(TO_DO_RESTART);
             }
     }
     void show() {
-        LoseTexture.render((SCREEN_WIDTH - LoseTexture.getWidth()) / 2, (SCREEN_HEIGHT - LoseTexture.getHeight()) / 2);
+        
+        if (score.isHighScore()) tempTexture.loadFromRenderedText("HIGH SCORE", textColor, gFont); 
+        else { 
+            tempTexture.loadFromRenderedText("YOUR SCORE", textColor, gFont); 
+        }
+        timeText.str("");
+
+        timeText << score.getScore();
+        yourScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, gFontMedSize);
+        loseMenuBox.render((SCREEN_WIDTH - loseMenuBox.getWidth()) / 2, 60);
+        if (score.getScore() < 100) {
+            fisrtStar[OFF_STAR].render(512, 210);
+            secondStar[OFF_STAR].render(602, 190);
+            thirdStar[OFF_STAR].render(702, 210);
+        }
+        if (score.getScore() >= 100 && score.getScore() < 200) {
+            fisrtStar[ON_STAR].render(512, 210);
+            secondStar[OFF_STAR].render(602, 190);
+            thirdStar[OFF_STAR].render(702, 210);
+        }
+        if (score.getScore() >= 200 && score.getScore() < 400) {
+            fisrtStar[ON_STAR].render(512, 210);
+            secondStar[ON_STAR].render(602, 190);
+            thirdStar[OFF_STAR].render(702, 210);
+        }
+        if (score.getScore() >= 400) {
+            fisrtStar[ON_STAR].render(512, 210);
+            secondStar[ON_STAR].render(602, 190);
+            thirdStar[ON_STAR].render(702, 210);
+        }
+        
+        tempTexture.render((SCREEN_WIDTH - tempTexture.getWidth()) / 2, 290);
+        yourScoreTexture.render((SCREEN_WIDTH - yourScoreTexture.getWidth()) / 2, 350);
+        reStart.render(reStartTexture, reStartSpriteClips);
     }
 };
 gLoseMenu LOSE_MENU;
@@ -558,34 +666,7 @@ public:
 
 };
 gExitMenu EXIT_MENU;
-class Score {
-private:
-    SDL_Color textColor = { 255, 255, 255, 255 };
-    //Text render
-    LTexture gTextTexture;
-    //Current time start time
-    Uint32 startTime = 0;
-    stringstream timeText;
-    LTimer gTimer;
 
-    Uint32 score=0;
-public:
-    void process();
-    void pause();
-    void start();
-    void reStart();
-    void render();
-    void shiftScore();
-    void resume();
-    void stop() {
-        if (gTimer.isStarted()) gTimer.stop();
-    }
-    int getScore();
-    bool isStarted() {
-        return gTimer.isStarted();
-    }
-};
-Score score;
 bool init();
 
 bool loadMedia();
@@ -1252,9 +1333,22 @@ bool loadMedia() {
         cout << "Failed to load Planes_ValMore font! SDL_ttf Error: %s\n" << TTF_GetError();
         success = false;
     }
+    gFontMedSize = TTF_OpenFont("font/Planes_ValMore.ttf", 80);
+    if (gFont == NULL)
+    {
+        cout << "Failed to load Planes_ValMore font! SDL_ttf Error: %s\n" << TTF_GetError();
+        success = false;
+    }
 
     //Sound
     gSound.loadMedia(success);
+
+    //Score
+    Uint32 savedScore;
+    fstream savedScoreInfo("score.txt", ios::in);
+    savedScoreInfo >> savedScore;
+    score.setScoreFromSaved(savedScore);
+    savedScoreInfo.close();
 
     //START MENU
     if (!START_MENU.MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
@@ -1385,7 +1479,7 @@ bool loadMedia() {
         OPTIONS_MENU.BackSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,469,144,154 };
         OPTIONS_MENU.Back.setPosition(320, 470);
     }
-    
+
     //Exit menu
     if (!EXIT_MENU.ExitMenuBox.loadFromFile("imgs/menu/exit/exitmenubox.png")) {
         success = false;
@@ -1397,7 +1491,7 @@ bool loadMedia() {
     }
     else
     {
-        EXIT_MENU.NoSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = {0,0,144,154};
+        EXIT_MENU.NoSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,144,154 };
         EXIT_MENU.NoSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,154,144,154 };
         EXIT_MENU.NoSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,308,144,154 };
         EXIT_MENU.NoSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,462,144,154 };
@@ -1409,7 +1503,6 @@ bool loadMedia() {
         EXIT_MENU.YesSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 156,462,144,154 };
         EXIT_MENU.Yes.setPosition(725, 450);
     }
-
 
     //Ingame menu
     if (!INGAME_MENU.PauseTexture.loadFromFile("imgs/menu/ingame_menu/pause_onclick.png")) {
@@ -1442,11 +1535,48 @@ bool loadMedia() {
         INGAME_MENU.SoundSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
         INGAME_MENU.Sound.setPosition(180, 10);
     }
-    if (!LOSE_MENU.LoseTexture.loadFromFile("imgs/menu/lose/gameover.png")) {
+    if (!LOSE_MENU.loseMenuBox.loadFromFile("imgs/menu/lose/gameoverbox.png")) {
         cout << "failed to load loseTexture" << endl;
         success = false;
     }
-    
+    if (!LOSE_MENU.fisrtStar[OFF_STAR].loadFromFile("imgs/menu/lose/1_OFF.png")) {
+        success = false;
+        cout << "load firstStar failed" << endl;
+    }
+    if (!LOSE_MENU.fisrtStar[ON_STAR].loadFromFile("imgs/menu/lose/1_ON.png")) {
+        success = false;
+        cout << "load firstStar failed" << endl;
+    }
+    if (!LOSE_MENU.secondStar[OFF_STAR].loadFromFile("imgs/menu/lose/2_OFF.png")) {
+        success = false;
+        cout << "load secondStar failed" << endl;
+    }
+    if (!LOSE_MENU.secondStar[ON_STAR].loadFromFile("imgs/menu/lose/2_ON.png")) {
+        success = false;
+        cout << "load secondStar failed" << endl;
+    }
+    if (!LOSE_MENU.thirdStar[OFF_STAR].loadFromFile("imgs/menu/lose/3_OFF.png")) {
+        success = false;
+        cout << "load thirdStar failed" << endl;
+    }
+    if (!LOSE_MENU.thirdStar[ON_STAR].loadFromFile("imgs/menu/lose/3_ON.png")) {
+        success = false;
+        cout << "load thirdStar failed" << endl;
+    }
+    if (!LOSE_MENU.reStartTexture.loadFromFile("imgs/menu/lose/restart.png")) {
+        success = false;
+        cout << "load reStartTexture failed" << endl;
+    }
+    else
+    {
+        LOSE_MENU.reStartSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = {0,0,144,154};
+        LOSE_MENU.reStartSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,154,144,154 };
+        LOSE_MENU.reStartSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = {0,308,144,154};
+        LOSE_MENU.reStartSpriteClips[BUTTON_SPRITE_MOUSE_UP] = {0,462,144,154};
+        LOSE_MENU.reStart.setPosition(568, 450);
+
+    }
+
     //Background
     if (!bg.Layer1.loadFromFile("imgs/background/background_layer_1.png")) {
         cout << "Load BG Layer1 that bai! " << endl;
@@ -1819,6 +1949,10 @@ void close() {
         << gSound.getVolumeChunk() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT ;
     soundSavedInfo.close();
 
+    fstream savedScoreInfo("score.txt", ios::out);
+    savedScoreInfo<< score.getHighScore();
+    savedScoreInfo.close();
+
     bg.Layer1.free();
     bg.Layer2.free();
     bg.Layer3.free();
@@ -1944,6 +2078,7 @@ void mainGameProcess() {
             if (checkCollision(rect_obstacles, rect_run)) {
                 score.pause();
                 speedRender = 0;
+                score.updateHighScore();
                 if (gameStatus == GAME_STATUS_PLAYING) gSound.PlayLoseSound();
                 gameStatus = GAME_STATUS_LOSE;
                 menuStatus = MENU_STATUS_LOSE;
@@ -2489,14 +2624,12 @@ void LSound::PlayPassSound() {
 void LSound::setVolumeMusic(const int& v) {
     volumeMusic = v;
     Mix_VolumeMusic(volumeMusic);
-    cout << v << endl;
 }
 void LSound::setVolumeChunk(const int& v) {
     volumeChunk = v;
     Mix_VolumeChunk(gJumpSound, volumeChunk);
     Mix_VolumeChunk(gLoseSound, volumeChunk);
     Mix_VolumeChunk(gPassSound, volumeChunk);
-    cout << v << endl;
 }
 void LSound::loadMedia(bool& success) {
     gBgm = Mix_LoadMUS("sound/bgm.wav");
@@ -2536,11 +2669,12 @@ void Score::reStart() {
     if (gTimer.isStarted()) gTimer.start();
 }
 void Score::render() {
-    if (!gTextTexture.loadFromRenderedText(timeText.str().c_str(), textColor, gFont)) {
+    if (!gCurrentScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, gFont)) {
         cout << "Unable to render time texture!" << endl;
     }
     else {
-        gTextTexture.render(SCREEN_WIDTH - gTextTexture.getWidth() - 50, 10);
+        gCurrentScoreTexture.render(SCREEN_WIDTH - gCurrentScoreTexture.getWidth() - 50, 10);
+        gHighScoreTexture.render(SCREEN_WIDTH - gHighScoreTexture.getWidth() - 200, 10);
     }
 } 
 int Score::getScore() {
