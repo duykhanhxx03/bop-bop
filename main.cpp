@@ -62,7 +62,7 @@ enum TO_DO {
     TO_DO_BACK_HOME,
     TO_DO_COUNTDOWN
 };
-void handle(const TO_DO& todo,const double &v);
+void handle(const TO_DO& todo, const double& v = MIX_MAX_VOLUME);
 enum Otter_Sheet_Height {
     RUN_SHEET_HEIGHT = 160,
     JUMP_SHEET_HEIGHT = 160,
