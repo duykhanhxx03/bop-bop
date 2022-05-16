@@ -1,5 +1,4 @@
 // BopBop.cpp : This file contains the 'main' function. Program execution begins and ends there.
-
 #include <iostream>
 #include <ctime>
 #include <cstdlib>
@@ -914,11 +913,18 @@ public:
     }
 };
 enum INDEX_LIST_OBSTACLES {
-    SHROOM,
-    PLANTRED,
-    PLANTVIOLET,
-    GOGLEEYESBEE,
-    OBSTACLES_TOTAL = 4
+    SHROOM_BIG,
+    SHROOM_MEDIUM,
+    SHROOM_SMALL,
+    PLANTRED_BIG,
+    PLANTRED_MEDIUM,
+    PLANTRED_SMALL,
+    PLANTVIOLET_BIG,
+    PLANTVIOLET_MEDIUM,
+    PLANTVIOLET_SMALL,
+    BEE_MALE,
+    BEE_FEMALE,
+    OBSTACLES_TOTAL
 };
 class ObstacleProperties {
 private:
@@ -946,8 +952,7 @@ public:
         return character;
     }
 };
-vector <ObstacleProperties> randomListObstaclesPlant;
-vector <ObstacleProperties> randomListObstaclesAnimal;
+vector <ObstacleProperties> randomListObstacles;
 
 int generateRandomNumber(const int min, const int max);
 void RandomObstacles(Obstacle& obstacle,vector <ObstacleProperties>& randomListObstacles);
@@ -1319,6 +1324,7 @@ bool init() {
 
 bool loadMedia() {
     bool success = true;
+    randomListObstacles.resize(11);
     //Font
     gFont = TTF_OpenFont("font/Planes_ValMore.ttf", 50);
     if (gFont == NULL)
@@ -1622,7 +1628,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mShroom_big);
         buffer.setColliders(Colliders);
-        randomListObstaclesPlant.push_back(buffer);
+        randomListObstacles[SHROOM_BIG] = buffer;
     }
     if (!mShroom_medium.loadFromFile("imgs/obstacle/shroom_medium.png")) {
         cout << "Load shroom small enemy that bai!" << endl;
@@ -1646,7 +1652,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mShroom_medium);
         buffer.setColliders(Colliders);
-        randomListObstaclesPlant.push_back(buffer);
+        randomListObstacles[SHROOM_MEDIUM] = buffer;
     }
     if (!mShroom_small.loadFromFile("imgs/obstacle/shroom_small.png")) {
         cout << "Load shroom small enemy that bai!" << endl;
@@ -1672,7 +1678,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mShroom_small);
         buffer.setColliders(Colliders);
-        randomListObstaclesPlant.push_back(buffer);
+        randomListObstacles[SHROOM_SMALL] = buffer;
     }
     if (!mPlantRed_big.loadFromFile("imgs/obstacle/plantred_big.png")) {
         cout << "Load plantred enemy that bai!" << endl;
@@ -1703,7 +1709,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mPlantRed_big);
         buffer.setColliders(Colliders);
-        randomListObstaclesPlant.push_back(buffer);
+        randomListObstacles[PLANTRED_BIG] = buffer;
     }
     if (!mPlantRed_medium.loadFromFile("imgs/obstacle/plantred_medium.png")) {
         cout << "Load plantred enemy that bai!" << endl;
@@ -1733,7 +1739,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mPlantRed_medium);
         buffer.setColliders(Colliders);
-        randomListObstaclesPlant.push_back(buffer);
+        randomListObstacles[PLANTRED_MEDIUM] = buffer;
     }
     if (!mPlantRed_small.loadFromFile("imgs/obstacle/plantred_small.png")) {
         cout << "Load plantred enemy that bai!" << endl;
@@ -1765,7 +1771,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mPlantRed_small);
         buffer.setColliders(Colliders);
-        randomListObstaclesPlant.push_back(buffer);
+        randomListObstacles[PLANTRED_SMALL] = buffer;
     }
 
     if (!mPlantViolet_big.loadFromFile("imgs/obstacle/plantviolet_big.png")) {
@@ -1790,7 +1796,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mPlantViolet_big);
         buffer.setColliders(Colliders);
-        randomListObstaclesPlant.push_back(buffer);
+        randomListObstacles[PLANTVIOLET_BIG] = buffer;
     }
     if (!mPlantViolet_medium.loadFromFile("imgs/obstacle/plantviolet_medium.png")) {
         cout << "Load plantviolet enemy that bai!" << endl;
@@ -1814,7 +1820,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mPlantViolet_medium);
         buffer.setColliders(Colliders);
-        randomListObstaclesPlant.push_back(buffer);
+        randomListObstacles[PLANTVIOLET_MEDIUM] = buffer;
     }
     if (!mPlantViolet_small.loadFromFile("imgs/obstacle/plantviolet_small.png")) {
         cout << "Load plantviolet enemy that bai!" << endl;
@@ -1835,7 +1841,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mPlantViolet_small);
         buffer.setColliders(Colliders);
-        randomListObstaclesPlant.push_back(buffer);
+        randomListObstacles[PLANTVIOLET_SMALL] = buffer;
     }
     if (!mMaleBee.loadFromFile("imgs/obstacle/malebee.png")) {
         cout << "Load mGogleEyesBee enemy that bai!" << endl;
@@ -1853,7 +1859,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mMaleBee);
         buffer.setColliders(Colliders);
-        randomListObstaclesAnimal.push_back(buffer);
+        randomListObstacles[BEE_MALE] = buffer;
     }
     if (!mFemaleBee.loadFromFile("imgs/obstacle/femalebee.png")) {
         cout << "Load mGogleEyesBee enemy that bai!" << endl;
@@ -1871,7 +1877,7 @@ bool loadMedia() {
         buffer.setSpritesClips(spritesClips);
         buffer.setCharacter(mFemaleBee);
         buffer.setColliders(Colliders);
-        randomListObstaclesAnimal.push_back(buffer);
+        randomListObstacles[BEE_FEMALE] = buffer;
     }
 
     //Otter
@@ -1975,11 +1981,11 @@ Obstacle firstPlant, secondPlant;
 vector <Obstacle> loopEnemy;
 void mainGameInit() {
     //first plant obstacle
-    RandomObstacles(firstPlant, randomListObstaclesPlant);
+    RandomObstacles(firstPlant, randomListObstacles);
     firstPlant.setX(SCREEN_WIDTH);
 
     //second plant obstacle
-    RandomObstacles(secondPlant, randomListObstaclesPlant);
+    RandomObstacles(secondPlant, randomListObstacles);
     secondPlant.setX(SCREEN_WIDTH+ SCREEN_WIDTH);
 
     //set loopEnemy
@@ -2090,7 +2096,7 @@ void mainGameProcess() {
             int distanceBetweenTwoObstacles = SCREEN_WIDTH + distance - loopEnemy[(i == 0 ? 1 : 0)].getX();
             if (distanceBetweenTwoObstacles >= 600 && distanceBetweenTwoObstacles <= 1500) {
                 loopEnemy[i].setX(SCREEN_WIDTH + distance);
-                RandomObstacles(loopEnemy[i], randomListObstaclesPlant);
+                RandomObstacles(loopEnemy[i], randomListObstacles);
             }
         }
     }
@@ -2688,12 +2694,19 @@ void Score::resume() {
     if (gTimer.isPaused()) gTimer.unpause();
 }
 
-void RandomObstacles(Obstacle& obstacle,vector <ObstacleProperties> &randomListObstacles) {
+void RandomObstacles(Obstacle& obstacle, vector <ObstacleProperties>& randomListObstacles) {
     int index = generateRandomNumber(0, randomListObstacles.size() - 1);
 
     obstacle.setCharacter(*randomListObstacles[index].getCharacter());
     obstacle.setColliders(randomListObstacles[index].getColliders());
     obstacle.setSpritesClips(randomListObstacles[index].getSpritesClips());
+    static vector <int> PosYofBee = { 500,550, 580 };
+    
+    //500 550 580
+    if (index == BEE_FEMALE || index == BEE_MALE) {
+        int index_ = generateRandomNumber(0, PosYofBee.size() - 1);
+        obstacle.setY(PosYofBee[index_]);
+    }
 }
 int generateRandomNumber(const int min, const int max)
 {
