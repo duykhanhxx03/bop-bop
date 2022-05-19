@@ -17,14 +17,23 @@ bool init();
 bool loadMedia();
 void clode();
 
+SDL_Window* gWindow = NULL;
+SDL_Renderer* gRenderer = NULL;
+
+TTF_Font* Font = NULL;
+TTF_Font* FontBigSize = NULL;
+TTF_Font* FontMedSize = NULL;
+
 bool quit = false;
 
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
+
+//speed render
 int speedRender = 0;
-// 10 12 15 18 20
 int speedRenderSaved = 0;
 int saved_speedRender = 10;
+
 enum TO_DO {
     TO_DO_START,
     TO_DO_BACK,
@@ -39,7 +48,8 @@ enum TO_DO {
     TO_DO_TURN_OFF_SOUND,
     TO_DO_TURN_ON_SOUND,
     TO_DO_BACK_HOME,
-    TO_DO_COUNTDOWN
+    TO_DO_COUNTDOWN,
+    TO_DO_INTRODUCE
 };
 enum ONOFFSTAR {
     OFF_STAR = 0,
@@ -59,13 +69,37 @@ enum MENU_STATUS {
     MENU_STATUS_OPTIONS,
     MENU_STATUS_COUNTDOWN,
     MENU_STATUS_LOSE,
-    MENU_STATUS_EXIT
+    MENU_STATUS_EXIT,
+    MENU_STATUS_INTRODUCE
 };
-MENU_STATUS menuStatus = MENU_STATUS_START;
-MENU_STATUS menuPre = menuStatus;
-GAME_STATUS gameStatus = GAME_STATUS_IDLE;
-void mainGameInit();
-void handle(const TO_DO& todo, const double& v = MIX_MAX_VOLUME);
+enum INDEX_LIST_OBSTACLES {
+    SHROOM_BIG,
+    SHROOM_MEDIUM,
+    SHROOM_SMALL,
+    PLANTRED_BIG,
+    PLANTRED_MEDIUM,
+    PLANTRED_SMALL,
+    PLANTVIOLET_BIG,
+    PLANTVIOLET_MEDIUM,
+    PLANTVIOLET_SMALL,
+    BEE_MALE,
+    BEE_FEMALE,
+    OBSTACLES_TOTAL
+};
+enum INDEX_LIST_GEMS {
+    GEMS_MONEDA_D,
+    GEMS_MONEDA_P,
+    GEMS_MONEDA_R,
+    GEMS_TOTAL
+};
+enum INDEX_LIST_COIN {
+    COIN_AMA,
+    COIN_AZU,
+    COIN_ROJ,
+    COIN_GRI,
+    COIN_STRIP,
+    COIN_TOTAL
+};
 enum Otter_Sheet_Height {
     RUN_SHEET_HEIGHT = 160,
     JUMP_SHEET_HEIGHT = 160,
@@ -78,6 +112,26 @@ enum STATUS {
     FALL = 2,
     FASTLANDING = 3
 };
+enum LSwitchSprite {
+    SWITCH_SPRITE_MOUSE_ON = 0,
+    SWITCH_SPRITE_MOUSE_OFF = 1,
+    SWITCH_SPRITE_TOTAL = 2
+};
+enum LButtonSprite
+{
+    BUTTON_SPRITE_MOUSE_OUT = 0,
+    BUTTON_SPRITE_MOUSE_OVER_MOTION = 1,
+    BUTTON_SPRITE_MOUSE_DOWN = 2,
+    BUTTON_SPRITE_MOUSE_UP = 3,
+    BUTTON_SPRITE_TOTAL = 4
+};
+
+MENU_STATUS menuStatus = MENU_STATUS_START;
+MENU_STATUS menuPre = menuStatus;
+GAME_STATUS gameStatus = GAME_STATUS_IDLE;
+void mainGameInit();
+void handle(const TO_DO& todo, const double& v = MIX_MAX_VOLUME);
+
 const int numberOfrunClips = 3;
 const int numberOfjumpClips = 1;
 const int numberOffallClips = 1;
@@ -97,31 +151,8 @@ public:
 //Threshold controller
 const int THRESHOLD_CONTROLER_LEFT = 570;
 const int THRESHOLD_CONTROLER_RIGHT = 850;
-
-enum LSwitchSprite {
-    SWITCH_SPRITE_MOUSE_ON = 0,
-    SWITCH_SPRITE_MOUSE_OFF = 1,
-    SWITCH_SPRITE_TOTAL = 2
-};
-
-enum LButtonSprite
-{
-    BUTTON_SPRITE_MOUSE_OUT = 0,
-    BUTTON_SPRITE_MOUSE_OVER_MOTION = 1,
-    BUTTON_SPRITE_MOUSE_DOWN = 2,
-    BUTTON_SPRITE_MOUSE_UP = 3,
-    BUTTON_SPRITE_TOTAL = 4
-};
-
 const int BUTTON_WIDTH = 320;
 const int BUTTON_HEIGHT = 113;
-SDL_Window* gWindow = NULL;
-
-SDL_Renderer* gRenderer = NULL;
-
-TTF_Font* gFont = NULL;
-TTF_Font* gFontBigSize = NULL;
-TTF_Font* gFontMedSize = NULL;
 
 class LTexture {
 public:
@@ -145,8 +176,8 @@ public:
 
     void render(int x, int y, SDL_Rect* clip = NULL, int mScale = 1);
 
-    int getWidth();
-    int getHeight();
+    int getWidth() const;
+    int getHeight() const;
 private:
     SDL_Texture* mTexture;
 
@@ -208,13 +239,15 @@ public:
     void PlayJumpSound();
     void PlayGainSound();
     void PlayLoseSound();
-    int getVolumeMusic();
-    int getVolumeChunk();
+    int getVolumeMusic() const;
+    int getVolumeChunk() const;
     void setVolumeMusic(const int& v);
     void setVolumeChunk(const int& v);
     void turnOffSound();
     void turnOnSound();
     void loadMedia(bool& success);
+    void free();
+    ~LSound();
 };
 LSound gSound;
 
@@ -233,7 +266,7 @@ public:
     void show();
     bool isEndCountDown();
 };
-LCountDown countDown;
+LCountDown gCountDown;
 
 class LScore {
 private:
@@ -266,7 +299,7 @@ public:
     int getScore();
     bool isStarted();
     void setScoreFromSaved(const Uint32& sc);
-    Uint32 getHighScore();
+    Uint32 getHighScore() const;
     bool isHighScore();
     void loadMedia(bool& success);
 };
@@ -309,18 +342,23 @@ class gStartMenu {
 private:
     //Start menu texture
     LTexture StartMenuBox;
-    LTexture MenuBackground;
     LTexture ButtonTexture;
+    LTexture IntroduceButtonTexture;
+
+    SDL_Color textColor = {255,255,255,255};
+    LTexture GameTitleText;
 
     //Button
     LButton Start;
     LButton Options;
     LButton Exit;
+    LButton Introduce;
 
     //Clips
     SDL_Rect StartSpriteClips[BUTTON_SPRITE_TOTAL];
     SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
     SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
+    SDL_Rect IntroduceSpriteClips[BUTTON_SPRITE_TOTAL];
 public:
     gStartMenu() {};
     void handleEvent(SDL_Event& e);
@@ -329,11 +367,29 @@ public:
 };
 gStartMenu START_MENU;
 
+class gIntroduceMenu {
+private:
+    //Start menu texture
+    LTexture IntroduceMenuBox;
+    LTexture BackTexture;
+
+    //Button
+    LButton Back;
+
+    //Clips
+    SDL_Rect BackSpriteClips[BUTTON_SPRITE_TOTAL];
+public:
+    gIntroduceMenu() {};
+    void handleEvent(SDL_Event& e);
+    void show();
+    void loadMedia(bool& success);
+};
+gIntroduceMenu INTRODUCE_MENU;
+
 class gPauseMenu {
 private:
     //Start menu texture
     LTexture PauseMenuBox;
-    LTexture MenuBackground;
     LTexture ButtonTexture;
 
     //Button
@@ -359,7 +415,6 @@ class gOptionsMenu {
 private:
     //Start menu texture
     LTexture OptionsMenuBox;
-    LTexture MenuBackground;
     LTexture BGMTexture;
     LTexture SFXTexture;
     LTexture BackTexture;
@@ -475,12 +530,6 @@ public:
 };
 gBackground BACKGROUND;
 
-static int count_run = 0;
-static int count_jump = 0;
-static int count_fall = 0;
-static int count_fastlanding = 0;
-static int count_idle = 0;
-
 const int GROUND = SCREEN_HEIGHT - 70;
 const int JUMP_MAX = 250;
 const double GRAVITY = 120;
@@ -520,10 +569,10 @@ private:
 
     vector <SDL_Rect> mSpritesClips;
     SDL_Rect* mCurrentClips;
-public:
     int mPosX;
     int mPosY;
     int frame;
+public:
     ObstacleAndItem();
     ObstacleAndItem(LTexture& texture, const int& n, const vector<SDL_Rect>& Colliders);
     vector<SDL_Rect> getColliders();
@@ -544,64 +593,24 @@ public:
     bool isOver();
     void shiftColliders(vector <SDL_Rect>& Colliders);
 };
-enum INDEX_LIST_OBSTACLES {
-    SHROOM_BIG,
-    SHROOM_MEDIUM,
-    SHROOM_SMALL,
-    PLANTRED_BIG,
-    PLANTRED_MEDIUM,
-    PLANTRED_SMALL,
-    PLANTVIOLET_BIG,
-    PLANTVIOLET_MEDIUM,
-    PLANTVIOLET_SMALL,
-    BEE_MALE,
-    BEE_FEMALE,
-    OBSTACLES_TOTAL
-};
-enum INDEX_LIST_GEMS {
-    GEMS_MONEDA_D,
-    GEMS_MONEDA_P,
-    GEMS_MONEDA_R,
-    GEMS_TOTAL
-};
-enum INDEX_LIST_COIN {
-    COIN_AMA,
-    COIN_AZU,
-    COIN_ROJ,
-    COIN_GRI,
-    COIN_STRIP,
-    COIN_TOTAL
-};
 class ObstacleAndItemProperties {
 private:
     LTexture* character;
     vector<SDL_Rect> mColliders;
-
     vector <SDL_Rect> mSpritesClips;
 public:
-    vector<SDL_Rect> getColliders() {
-        return mColliders;
-    }
-    void setSpritesClips(const vector<SDL_Rect>& spritesClips) {
-        mSpritesClips = spritesClips;
-    }
-    vector<SDL_Rect> getSpritesClips() {
-        return mSpritesClips;
-    }
-    void setColliders(const vector<SDL_Rect>& Colliders) {
-        mColliders = Colliders;
-    }
-    void setCharacter(LTexture& texture) {
-        character = &texture;
-    }
-    LTexture* getCharacter() {
-        return character;
-    }
+    vector<SDL_Rect> getColliders() const;
+    void setSpritesClips(const vector<SDL_Rect>& spritesClips);
+    vector<SDL_Rect> getSpritesClips() const;
+    void setColliders(const vector<SDL_Rect>& Colliders);
+    void setCharacter(LTexture& texture);
+    LTexture* getCharacter() const;
 };
 vector <ObstacleAndItemProperties> randomListObstacles;
 vector <ObstacleAndItemProperties> randomListCoin;
 vector <ObstacleAndItemProperties> randomListGems;
-
+void loadFont(bool& success);
+void loadRandomList(bool& success);
 int generateRandomNumber(const int min, const int max);
 void RandomObstaclesAndItem(ObstacleAndItem& obstacle, vector <ObstacleAndItemProperties>& randomList);
 
@@ -610,6 +619,12 @@ private:
     double mPosX;
     double mPosY;
     
+    int count_run;
+    int count_jump;
+    int count_fall;
+    int count_fastlanding;
+    int count_idle;
+
     int runPresentFrame;
     int jumpPresentFrame;
     int fallPresentFrame;
@@ -663,6 +678,7 @@ public:
     int getStatus();
 };
 gCharacter Otter;
+
 bool init() {
     bool success = true;
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
@@ -678,14 +694,14 @@ bool init() {
 
         gWindow = SDL_CreateWindow("Bop!Bop! by duykhanhxx03", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
         if (gWindow == NULL) {
-            cout << "Khong tao duoc window! " << SDL_GetError();
+            cout << "Failed to create window! " << SDL_GetError();
             success = false;
         }
         else
         {
             gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
             if (gRenderer == NULL) {
-                cout << "Khong tao duoc renderer! " << SDL_GetError();
+                cout << "Failed to create renderer! " << SDL_GetError();
                 success = false;
             }
             else
@@ -694,7 +710,7 @@ bool init() {
 
                 int imgFlags = IMG_INIT_PNG;
                 if (!(IMG_Init(imgFlags) & imgFlags)) {
-                    cout << "SDL_image khong duoc khoi tao! " << IMG_GetError();
+                    cout << "SDL_image could not initialize! " << IMG_GetError();
                     success = false;
                 }
 
@@ -714,31 +730,11 @@ bool init() {
     }
     return success;
 }
-
 bool loadMedia() {
     bool success = true;
-    randomListObstacles.resize(11);
-    randomListCoin.resize(5);
-    randomListGems.resize(3);
+
     //Font
-    gFont = TTF_OpenFont("font/Planes_ValMore.ttf", 50);
-    if (gFont == NULL)
-    {
-        cout << "Failed to load Planes_ValMore font! SDL_ttf Error: %s\n" << TTF_GetError();
-        success = false;
-    }
-    gFontBigSize = TTF_OpenFont("font/Planes_ValMore.ttf", 120);
-    if (gFont == NULL)
-    {
-        cout << "Failed to load Planes_ValMore font! SDL_ttf Error: %s\n" << TTF_GetError();
-        success = false;
-    }
-    gFontMedSize = TTF_OpenFont("font/Planes_ValMore.ttf", 80);
-    if (gFont == NULL)
-    {
-        cout << "Failed to load Planes_ValMore font! SDL_ttf Error: %s\n" << TTF_GetError();
-        success = false;
-    }
+    loadFont(success);
 
     //Otter
     Otter.loadMedia(success);
@@ -751,499 +747,65 @@ bool loadMedia() {
 
     //START MENU
     START_MENU.loadMedia(success);
+    
     //PAUSE MENU
     PAUSE_MENU.loadMedia(success);
+    
     //OPTIONS MENU
     OPTIONS_MENU.loadMedia(success);
+    
     //Exit menu
     EXIT_MENU.loadMedia(success);
+    
     //Ingame menu
     INGAME_MENU.loadMedia(success);
+    
     //Lose menu
     LOSE_MENU.loadMedia(success);
+    
+    INTRODUCE_MENU.loadMedia(success);
     //Background
     BACKGROUND.loadMedia(success);
 
-    //Shroom enemy mShroom
-    if (!mShroom_big.loadFromFile("imgs/obstacle/shroom_big.png")) {
-        cout << "Load shroom big enemy that bai!" << endl;
-        success = false;
-    }
-    else {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,79,90}
-        };
-        vector <SDL_Rect> Colliders = {
-            {19,0,40,4},
-            {11,4,57,5},
-            {7,9,65,5},
-            {2,14,75,7},
-            {0,20,79,16},
-            {2,36,75,7},
-            {6,43,67,5},
-            {13,48,53,42}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mShroom_big);
-        buffer.setColliders(Colliders);
-        randomListObstacles[SHROOM_BIG] = buffer;
-    }
-    if (!mShroom_medium.loadFromFile("imgs/obstacle/shroom_medium.png")) {
-        cout << "Load shroom small enemy that bai!" << endl;
-        success = false;
-    }
-    else {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,66,75}
-        };
-        vector <SDL_Rect> Colliders = {
-            {16,0,33,4},
-            {9,4,48,4},
-            {6,8,54,4},
-            {1,12,63,5},
-            {0,17,66,13},
-            {1,30,64,6},
-            {5,36,56,4},
-            {11,40,44,35}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mShroom_medium);
-        buffer.setColliders(Colliders);
-        randomListObstacles[SHROOM_MEDIUM] = buffer;
-    }
-    if (!mShroom_small.loadFromFile("imgs/obstacle/shroom_small.png")) {
-        cout << "Load shroom small enemy that bai!" << endl;
-        success = false;
-    }
-    else {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,53,60}
-        };
-        vector <SDL_Rect> Colliders = {
-            {13,0,27,3},
-            {7,3,39,3},
-            {4,6,45,3},
-            {1,9,51,3},
-            {1,12,51,2},
-            {0,14,53,10},
-            {1,24,51,3},
-            {3,27,47,3},
-            {6,30,41,3},
-            {9,33,35,26}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mShroom_small);
-        buffer.setColliders(Colliders);
-        randomListObstacles[SHROOM_SMALL] = buffer;
-    }
-    if (!mPlantRed_big.loadFromFile("imgs/obstacle/plantred_big.png")) {
-        cout << "Load plantred enemy that bai!" << endl;
-        success = false;
-    }
-    else {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,80,90}
-        };
-        vector <SDL_Rect> Colliders = {
-            {27,0,17,3},
-            {25,3,23,3},
-            {25,6,25,3},
-            {24,9,29,3},
-            {9,12,60,3},
-            {7,15,64,3},
-            {7,18,67,8},
-            {3,27,72,6},
-            {1,33,73,4},
-            {0,37,77,5},
-            {0,42,80,6},
-            {1,47,79,6},
-            {3,53,74,7},
-            {4,60,55,8},
-            {20,70,53,20}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mPlantRed_big);
-        buffer.setColliders(Colliders);
-        randomListObstacles[PLANTRED_BIG] = buffer;
-    }
-    if (!mPlantRed_medium.loadFromFile("imgs/obstacle/plantred_medium.png")) {
-        cout << "Load plantred enemy that bai!" << endl;
-        success = false;
-    }
-    else {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,66,75}
-        };
-        vector <SDL_Rect> Colliders = {
-            {22,0,16,3},
-            {21,3,19,3},
-            {20,6,23,4},
-            {6,10,53,4},
-            {6,14,55,8},
-            {4,22,58,3},
-            {2,25,60,3},
-            {1,28,60,3},
-            {0,31,64,3},
-            {0,34,66,6},
-            {1,40,65,5},
-            {2,45,61,5},
-            {3,50,46,6},
-            {17,58,43,17}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mPlantRed_medium);
-        buffer.setColliders(Colliders);
-        randomListObstacles[PLANTRED_MEDIUM] = buffer;
-    }
-    if (!mPlantRed_small.loadFromFile("imgs/obstacle/plantred_small.png")) {
-        cout << "Load plantred enemy that bai!" << endl;
-        success = false;
-    }
-    else {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,53,60}
-        };
-        vector <SDL_Rect> Colliders = {
-            {18,0,11,2},
-            {17,2,15,2},
-            {17,4,17,2},
-            {16,6,19,2},
-            {6,8,40,2},
-            {5,10,42,2},
-            {5,12,44,6},
-            {3,18,47,2},
-            {2,20,48,2},
-            {1,22,48,2},
-            {0,25,52,3},
-            {0,28,53,6},
-            {2,34,50,6},
-            {3,40,36,2},
-            {5,42,34,3},
-            {13,46,35,14}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mPlantRed_small);
-        buffer.setColliders(Colliders);
-        randomListObstacles[PLANTRED_SMALL] = buffer;
-    }
-
-    if (!mPlantViolet_big.loadFromFile("imgs/obstacle/plantviolet_big.png")) {
-        cout << "Load plantviolet enemy that bai!" << endl;
-        success = false;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,79,90}
-        };
-        vector <SDL_Rect> Colliders = {
-            {6,70,67,20},
-            {12,56,55,15},
-            {0,50,79,6},
-            {2,42,75,8},
-            {1,21,77,21},
-            {2,12,75,9},
-            {0,0,79,12}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mPlantViolet_big);
-        buffer.setColliders(Colliders);
-        randomListObstacles[PLANTVIOLET_BIG] = buffer;
-    }
-    if (!mPlantViolet_medium.loadFromFile("imgs/obstacle/plantviolet_medium.png")) {
-        cout << "Load plantviolet enemy that bai!" << endl;
-        success = false;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,66,75}
-        };
-        vector <SDL_Rect> Colliders = {
-            {5,58,56,17},
-            {10,47,47,11},
-            {0,42,66,5},
-            {2,36,62,6},
-            {1,18,64,19},
-            {1,10,64,8},
-            {0,0,66,10}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mPlantViolet_medium);
-        buffer.setColliders(Colliders);
-        randomListObstacles[PLANTVIOLET_MEDIUM] = buffer;
-    }
-    if (!mPlantViolet_small.loadFromFile("imgs/obstacle/plantviolet_small.png")) {
-        cout << "Load plantviolet enemy that bai!" << endl;
-        success = false;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,53,60}
-        };
-        vector <SDL_Rect> Colliders = {
-            {0,0,53,38},
-            {8,37,37,9},
-            {6,46,40,6},
-            {4,52,45,8}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mPlantViolet_small);
-        buffer.setColliders(Colliders);
-        randomListObstacles[PLANTVIOLET_SMALL] = buffer;
-    }
-    if (!mMaleBee.loadFromFile("imgs/obstacle/malebee.png")) {
-        cout << "Load mGogleEyesBee enemy that bai!" << endl;
-        success = false;
-    }
-    else {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,61,40},
-            {62,0,61,40}
-        };
-        vector <SDL_Rect> Colliders = {
-            {3,2,55,36}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mMaleBee);
-        buffer.setColliders(Colliders);
-        randomListObstacles[BEE_MALE] = buffer;
-    }
-    if (!mFemaleBee.loadFromFile("imgs/obstacle/femalebee.png")) {
-        cout << "Load mGogleEyesBee enemy that bai!" << endl;
-        success = false;
-    }
-    else {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,61,40},
-            {62,0,61,40}
-        };
-        vector <SDL_Rect> Colliders = {
-            {3,2,55,36}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mFemaleBee);
-        buffer.setColliders(Colliders);
-        randomListObstacles[BEE_FEMALE] = buffer;
-    }
-
-    //Coin
-    if (!mCoinAma.loadFromFile("imgs/coingems/CoinAma.png")) {
-        success = false;
-        cout << "" << endl;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,48,48},
-           {48,0,48,48},
-           {96,0,48,48},
-           {144,0,48,48}
-        };
-        vector <SDL_Rect> Colliders = {
-            {3,3,30,45}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mCoinAma);
-        buffer.setColliders(Colliders);
-        randomListCoin[COIN_AMA] = buffer;
-    }
-    if (!mCoinAzu.loadFromFile("imgs/coingems/CoinAzu.png")) {
-        success = false;
-        cout << "" << endl;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,48,48},
-           {48,0,48,48},
-           {96,0,48,48},
-           {144,0,48,48}
-        };
-        vector <SDL_Rect> Colliders = {
-            {3,3,30,45}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mCoinAzu);
-        buffer.setColliders(Colliders);
-        randomListCoin[COIN_AZU] = buffer;
-    }
-    if (!mCoinRoj.loadFromFile("imgs/coingems/CoinRoj.png")) {
-        success = false;
-        cout << "" << endl;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,48,48},
-           {48,0,48,48},
-           {96,0,48,48},
-           {144,0,48,48}
-        };
-        vector <SDL_Rect> Colliders = {
-            {3,3,30,45}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mCoinRoj);
-        buffer.setColliders(Colliders);
-        randomListCoin[COIN_ROJ] = buffer;
-    }
-    if (!mCoinGri.loadFromFile("imgs/coingems/CoinGri.png")) {
-        success = false;
-        cout << "" << endl;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,48,48},
-           {48,0,48,48},
-           {96,0,48,48},
-           {144,0,48,48}
-        };
-        vector <SDL_Rect> Colliders = {
-            {3,3,30,45}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mCoinGri);
-        buffer.setColliders(Colliders);
-        randomListCoin[COIN_GRI] = buffer;
-    }
-    if (!mCoinStrip.loadFromFile("imgs/coingems/CoinStrip.png")) {
-        success = false;
-        cout << "" << endl;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,48,48},
-           {48,0,48,48},
-           {96,0,48,48},
-           {144,0,48,48}
-        };
-        vector <SDL_Rect> Colliders = {
-            {3,3,30,45}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mCoinStrip);
-        buffer.setColliders(Colliders);
-        randomListCoin[COIN_STRIP] = buffer;
-    }
-
-    //Gems
-    if (!mMonedaD.loadFromFile("imgs/coingems/MonedaD.png")) {
-        success = false;
-        cout << "" << endl;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-            {0,0,48,48},
-            {48,0,48,48},
-            {96,0,48,48},
-            {144,0,48,48},
-            {192,0,48,48}
-        };
-        vector <SDL_Rect> Colliders = {
-            {3,0,42,48}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mMonedaD);
-        buffer.setColliders(Colliders);
-        randomListGems[GEMS_MONEDA_D] = buffer;
-    }
-    if (!mMonedaP.loadFromFile("imgs/coingems/MonedaP.png")) {
-        success = false;
-        cout << "" << endl;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-           {0,0,48,48},
-           {48,0,48,48},
-           {96,0,48,48},
-           {144,0,48,48},
-           {192,0,48,48}
-        };
-        vector <SDL_Rect> Colliders = {
-            {3,0,42,48}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mMonedaP);
-        buffer.setColliders(Colliders);
-        randomListGems[GEMS_MONEDA_P] = buffer;
-    }
-    if (!mMonedaR.loadFromFile("imgs/coingems/MonedaR.png")) {
-        success = false;
-        cout << "" << endl;
-    }
-    else
-    {
-        vector <SDL_Rect> spritesClips = {
-           {0,0,48,48},
-           {48,0,48,48},
-           {96,0,48,48},
-           {144,0,48,48},
-           {192,0,48,48}
-        };
-        vector <SDL_Rect> Colliders = {
-            {3,0,42,48}
-        };
-        ObstacleAndItemProperties buffer;
-        buffer.setSpritesClips(spritesClips);
-        buffer.setCharacter(mMonedaR);
-        buffer.setColliders(Colliders);
-        randomListGems[GEMS_MONEDA_R] = buffer;
-    }
+    //Load random list
+    loadRandomList(success);
 
     return success;
 }
-
 void close() {
-
+    //Writing sound infomation
     fstream soundSavedInfo("sound/VOLUMEINFO.txt", ios::out);
     soundSavedInfo << gSound.getVolumeMusic() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT << " "
         << gSound.getVolumeChunk() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT ;
     soundSavedInfo.close();
 
+    //Writting high score infomation
     fstream savedScoreInfo("score.txt", ios::out);
     savedScoreInfo<< SCORE.getHighScore();
     savedScoreInfo.close();
 
-    //Free global font
-    TTF_CloseFont(gFont);
-    gFont = NULL;
+    //Free font
+    TTF_CloseFont(Font);
+    Font = NULL;
+    TTF_CloseFont(FontMedSize);
+    FontMedSize = NULL;
+    TTF_CloseFont(FontBigSize);
+    FontBigSize = NULL;
 
     SDL_DestroyRenderer(gRenderer);
     SDL_DestroyWindow(gWindow);
     gWindow = NULL;
     gRenderer = NULL;
 
+    Mix_Quit();
     IMG_Quit();
     SDL_Quit();
 }
+
 //DECLARE
-vector <int> randomDistance = { 100, 300, 500, 200, 400};
-vector <int> randomCoinTimeList = { 3, 4, 5};
-vector <int> randomGemsTimeList = {10, 12, 14};
+vector <int> randomListDistance = { 100, 300, 500, 200, 400};
+vector <int> randomListCoinTime = { 4, 5, 6};
+vector <int> randomListGemsTime = {12, 14, 16};
 ObstacleAndItem firstPlant, secondPlant;
 vector <ObstacleAndItem> loopEnemy;
 
@@ -1275,16 +837,16 @@ void mainGameInit() {
     RandomObstaclesAndItem(coin, randomListCoin);
     coin.setX(1280);
     coin.setY(420);
-    coinRandomTime = randomCoinTimeList[generateRandomNumber(0, randomCoinTimeList.size() - 1)];
+    coinRandomTime = randomListCoinTime[generateRandomNumber(0, randomListCoinTime.size() - 1)];
     //set loopCoin
     loopCoin = { coin };
     coinRandomTimer.start();
     isCoinShow = false;
 
     RandomObstaclesAndItem(gems, randomListGems);
-    coin.setX(1280);
-    coin.setY(550);
-    gemsRandomTime = randomGemsTimeList[generateRandomNumber(0, randomGemsTimeList.size() - 1)];
+    gems.setX(1280);
+    gems.setY(555);
+    gemsRandomTime = randomListGemsTime[generateRandomNumber(0, randomListGemsTime.size() - 1)];
     //set loopCoin
     loopGems = { gems };
     gemsRandomTimer.start();
@@ -1359,13 +921,15 @@ void handle(const TO_DO& todo, const double &v) {
         break;
     case TO_DO_COUNTDOWN:
         menuStatus = MENU_STATUS_COUNTDOWN;
-        countDown.init();
+        gCountDown.init();
         break;
     case TO_DO_EXIT_MENU:
         menuStatus = MENU_STATUS_EXIT;
         break;
+    case TO_DO_INTRODUCE:
+        menuStatus = MENU_STATUS_INTRODUCE;
+        break;
     }
-
 }
 void mainGameProcess() {
     //Background render
@@ -1391,8 +955,8 @@ void mainGameProcess() {
             }
         }
         else {
-            int index = generateRandomNumber(0, randomDistance.size() - 1);
-            int distance = randomDistance[index];
+            int index = generateRandomNumber(0, randomListDistance.size() - 1);
+            int distance = randomListDistance[index];
             int distanceBetweenTwoObstacles = SCREEN_WIDTH + distance - loopEnemy[(i == 0 ? 1 : 0)].getX();
             if (distanceBetweenTwoObstacles >= 600 && distanceBetweenTwoObstacles <= 1500) {
                 loopEnemy[i].setX(SCREEN_WIDTH + distance);
@@ -1413,21 +977,21 @@ void mainGameProcess() {
                 if (checkCollision(rect_coin, rect_run)) {
                     gSound.PlayGainSound();
                     SCORE.addScore(10);
-                    RandomObstaclesAndItem(loopCoin[0], randomListCoin);
+                    RandomObstaclesAndItem(loopCoin[i], randomListCoin);
                     loopCoin[0].setX(1280);
                     loopCoin[0].setY(420);
                     isCoinShow = false;
-                    coinRandomTime = randomCoinTimeList[generateRandomNumber(0, randomCoinTimeList.size() - 1)];
+                    coinRandomTime = randomListCoinTime[generateRandomNumber(0, randomListCoinTime.size() - 1)];
                     coinRandomTimer.start();
                 }
             }
             else
             {
-                RandomObstaclesAndItem(loopCoin[0], randomListCoin);
-                loopCoin[0].setX(1280);
-                loopCoin[0].setY(420);
+                RandomObstaclesAndItem(loopCoin[i], randomListCoin);
+                loopCoin[i].setX(1280);
+                loopCoin[i].setY(420);
                 isCoinShow = false;
-                coinRandomTime = randomCoinTimeList[generateRandomNumber(0, randomCoinTimeList.size() - 1)];
+                coinRandomTime = randomListCoinTime[generateRandomNumber(0, randomListCoinTime.size() - 1)];
                 coinRandomTimer.start();
             }
         }
@@ -1446,21 +1010,21 @@ void mainGameProcess() {
                 if (checkCollision(rect_gems, rect_run)) {
                     gSound.PlayGainSound();
                     SCORE.addScore(20);
-                    RandomObstaclesAndItem(loopGems[0], randomListGems);
-                    loopGems[0].setX(1280);
-                    loopGems[0].setY(550);
+                    RandomObstaclesAndItem(loopGems[i], randomListGems);
+                    loopGems[i].setX(1280);
+                    loopGems[i].setY(555);
                     isGemsShow = false;
-                    gemsRandomTime = randomGemsTimeList[generateRandomNumber(0, randomGemsTimeList.size() - 1)];
+                    gemsRandomTime = randomListGemsTime[generateRandomNumber(0, randomListGemsTime.size() - 1)];
                     gemsRandomTimer.start();
                 }
             }
             else
             {
-                RandomObstaclesAndItem(loopGems[0], randomListGems);
-                loopGems[0].setX(1280);
-                loopGems[0].setY(550);
+                RandomObstaclesAndItem(loopGems[i], randomListGems);
+                loopGems[i].setX(1280);
+                loopGems[i].setY(550);
                 isGemsShow = false;
-                gemsRandomTime = randomGemsTimeList[generateRandomNumber(0, randomGemsTimeList.size() - 1)];
+                gemsRandomTime = randomListGemsTime[generateRandomNumber(0, randomListGemsTime.size() - 1)];
                 gemsRandomTimer.start();
             }
         }
@@ -1517,7 +1081,7 @@ int main(int argc, char* argv[])
                         PAUSE_MENU.handleEvent(e);
                         INGAME_MENU.handleEvent(e);
                         if (e.type == SDL_KEYDOWN)
-                            if (e.key.keysym.sym == SDLK_ESCAPE && e.key.repeat == 0) handle(TO_DO_COUNTDOWN);
+                            if ((e.key.keysym.sym == SDLK_ESCAPE|| e.key.keysym.sym ==SDLK_SPACE) && e.key.repeat == 0) handle(TO_DO_COUNTDOWN);
                         break;
                     case MENU_STATUS_OPTIONS:
                         OPTIONS_MENU.handleEvent(e);
@@ -1532,7 +1096,12 @@ int main(int argc, char* argv[])
                     case MENU_STATUS_EXIT:
                         EXIT_MENU.handleEvent(e);
                         break;
+                    case MENU_STATUS_INTRODUCE:
+                        INTRODUCE_MENU.handleEvent(e);
+                        break;
                     }
+                    
+
                 }
                 SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
                 SDL_RenderClear(gRenderer);
@@ -1547,6 +1116,9 @@ int main(int argc, char* argv[])
                     case MENU_STATUS_START:
                         START_MENU.show();
                         break;
+                    case MENU_STATUS_INTRODUCE:
+                        INTRODUCE_MENU.show();
+                        break;
                     case MENU_STATUS_PAUSED:
                         PAUSE_MENU.show();
                         break;
@@ -1560,7 +1132,7 @@ int main(int argc, char* argv[])
                         EXIT_MENU.show();
                         break;
                     case MENU_STATUS_COUNTDOWN:
-                        if (!countDown.isEndCountDown()) countDown.show(); else handle(TO_DO_RESUME);
+                        if (!gCountDown.isEndCountDown()) gCountDown.show(); else handle(TO_DO_RESUME);
                         break;
                 }
                 
@@ -1589,13 +1161,13 @@ bool LTexture::loadFromFile(string path) {
     SDL_Texture* newTexture = NULL;
     SDL_Surface* loadedSurface = IMG_Load(path.c_str());
     if (loadedSurface == NULL) {
-        cout << "Khong load duoc anh: " << path << " " << IMG_GetError();
+        cout << "Failed to load image: " << path << " " << IMG_GetError();
     }
     else
     {
         newTexture = SDL_CreateTextureFromSurface(gRenderer, loadedSurface);
         if (newTexture == NULL) {
-            cout << "Khong tao duoc texture tu surface: " << path << " " << SDL_GetError();
+            cout << "Failed to create texture from surface: " << path << " " << SDL_GetError();
         }
         else
         {
@@ -1634,10 +1206,10 @@ void LTexture::render(int x, int y, SDL_Rect* clip, int mScale) {
     }
     SDL_RenderCopy(gRenderer, mTexture, clip, &renderQuad);
 }
-int LTexture::getHeight() {
+int LTexture::getHeight() const {
     return mHeight;
 }
-int LTexture::getWidth() {
+int LTexture::getWidth() const {
     return mWidth;
 }
 #if defined(SDL_TTF_MAJOR_VERSION)
@@ -1736,63 +1308,48 @@ void gBackground::render(int speedRender) {
 }
 void gBackground::loadMedia(bool& success) {
     if (!Layer1.loadFromFile("imgs/background/background_layer_1.png")) {
-        cout << "Load BG Layer1 that bai! " << endl;
+        cout << "Load BG Layer1 failed! " << endl;
         success = false;
     }
     if (!Layer2.loadFromFile("imgs/background/background_layer_2.png")) {
-        cout << "Load BG Layer2 that bai! " << endl;
+        cout << "Load BG Layer2 failed! " << endl;
         success = false;
     }
     if (!Layer3.loadFromFile("imgs/background/background_layer_3.png")) {
-        cout << "Load BG Layer3 that bai! " << endl;
+        cout << "Load BG Layer3 failed! " << endl;
         success = false;
     }
     if (!Layer4.loadFromFile("imgs/background/background_layer_4.png")) {
-        cout << "Load BG Layer4 that bai! " << endl;
+        cout << "Load BG Layer4 failed! " << endl;
         success = false;
     }
     if (!Ground.loadFromFile("imgs/background/ground.png")) {
-        cout << "Load Ground that bai! " << endl;
+        cout << "Load Ground failed! " << endl;
         success = false;
     }
 }
 
 //Start menu
 void gStartMenu::handleEvent(SDL_Event& e) {
+    Introduce.handleEvent(&e, 110, 116, TO_DO_INTRODUCE);
     Start.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_START);
     Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_OPTIONS);
     Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT_MENU);
 }
 void gStartMenu::show() {
-    static int alpha = 0;
-    //Blur
-    if (alpha > 255) alpha = 255;
-    MenuBackground.setAlpha(alpha);
-    alpha += 40;
-
-    //Render menu background
-    //MenuBackground.render(0, 0);
-
+    GameTitleText.render(200, 150);
+    GameTitleText.render(300, 300);
     //Render start menu box
-    StartMenuBox.render((SCREEN_WIDTH - StartMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - StartMenuBox.getHeight()) / 2);
-
+    StartMenuBox.render(820, (SCREEN_HEIGHT - StartMenuBox.getHeight()) / 2);
     //Render button
+    Introduce.render(IntroduceButtonTexture, IntroduceSpriteClips);
     Start.render(ButtonTexture, StartSpriteClips);
     Options.render(ButtonTexture, OptionsSpriteClips);
     Exit.render(ButtonTexture, ExitSpriteClips);
 }
 void gStartMenu::loadMedia(bool& success) {
-    if (!MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
-        cout << "Load menu_bg that bai! " << endl;
-        success = false;
-    }
-    else
-    {
-        MenuBackground.setBlendMode(SDL_BLENDMODE_BLEND);
-    }
-
     if (!ButtonTexture.loadFromFile("imgs/menu/start/start_menu_button_sheet.png")) {
-        cout << "Load gStartMenu that bai! " << endl;
+        cout << "Load gStartMenu failed! " << endl;
         success = false;
     }
     else
@@ -1801,25 +1358,65 @@ void gStartMenu::loadMedia(bool& success) {
         StartSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,0,320,113 };
         StartSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,0,320,113 };
         StartSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,0,320,113 };
-        Start.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 210);
+        Start.setPosition(870, 210);
 
         OptionsSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,122,320,113 };
         OptionsSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,122,320,113 };
         OptionsSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,122,320,113 };
         OptionsSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,122,320,113 };
-        Options.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 330);
+        Options.setPosition(870, 330);
 
         ExitSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,244,320,113 };
         ExitSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,244,320,113 };
         ExitSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,244,320,113 };
         ExitSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,244,320,113 };
-        Exit.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 450);
+        Exit.setPosition(870, 450);
 
     }
-    if (!StartMenuBox.loadFromFile("imgs/menu/start/startmenubox.png")) {
-        cout << "Load gStartMenu background that bai! " << endl;
+    if (!IntroduceButtonTexture.loadFromFile("imgs/menu/start/info_button_sheet.png")) {
+        cout << "Load IntroduceButtonTexture failed! " << endl;
         success = false;
     }
+    else
+    {
+        IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,110,116 };
+        IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,116,110,116 };
+        IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,232,110,116 };
+        IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,348,110,116 };
+        Introduce.setPosition(10, 10);
+    }
+    if (!StartMenuBox.loadFromFile("imgs/menu/start/startmenubox.png")) {
+        cout << "Load gStartMenu background failed! " << endl;
+        success = false;
+    }
+    GameTitleText.loadFromRenderedText("BOP!", textColor, FontBigSize);
+}
+
+//Introduce menu
+void gIntroduceMenu::loadMedia(bool& success) {
+    if (!IntroduceMenuBox.loadFromFile("imgs/menu/introduce/Introducemenubox.png")) {
+        success = false;
+        cout << "failed to load IntroduceMenuBox" << endl;
+    }
+    if (!BackTexture.loadFromFile("imgs/menu/introduce/back_button_sheet.png")) {
+        success = false;
+        cout << "failed to load IntroduceMenuBox" << endl;
+    }
+    else
+    {
+        BackSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,144,152 };
+        BackSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,156,144,154 };
+        BackSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,312,144,154 };
+        BackSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,469,144,154 };
+        Back.setPosition(200, 470);
+    }
+}
+void gIntroduceMenu::handleEvent(SDL_Event& e) {
+    Back.handleEvent(&e, 144, 154, TO_DO_BACK, true);
+}
+void gIntroduceMenu::show() {
+    IntroduceMenuBox.render((SCREEN_WIDTH - IntroduceMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - IntroduceMenuBox.getHeight()) / 2);
+    Back.render(BackTexture,BackSpriteClips);
 }
 
 //Pause menu
@@ -1830,15 +1427,6 @@ void gPauseMenu::handleEvent(SDL_Event& e) {
     Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT_MENU);
 }
 void gPauseMenu::show() {
-    static int alpha = 0;
-    //Blur
-    if (alpha > 255) alpha = 255;
-    MenuBackground.setAlpha(alpha);
-    alpha += 5;
-
-    //Render menu background
-    //MenuBackground.render(0, 0);
-
     //Render start menu box
     PauseMenuBox.render((SCREEN_WIDTH - PauseMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - PauseMenuBox.getHeight()) / 2);
 
@@ -1849,16 +1437,8 @@ void gPauseMenu::show() {
     Exit.render(ButtonTexture, ExitSpriteClips);
 }
 void gPauseMenu::loadMedia(bool& success) {
-    if (!MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
-        cout << "Load menu_bg that bai! " << endl;
-        success = false;
-    }
-    else
-    {
-        MenuBackground.setBlendMode(SDL_BLENDMODE_BLEND);
-    }
     if (!ButtonTexture.loadFromFile("imgs/menu/pause/pause_menu_button_sheet.png")) {
-        cout << "Load gPauseMenu that bai! " << endl;
+        cout << "Load gPauseMenu failed! " << endl;
         success = false;
     }
     else
@@ -1888,7 +1468,7 @@ void gPauseMenu::loadMedia(bool& success) {
         Exit.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 515);
     }
     if (!PauseMenuBox.loadFromFile("imgs/menu/pause/pausemenubox.png")) {
-        cout << "Load gPauseMenu background that bai! " << endl;
+        cout << "Load gPauseMenu background failed! " << endl;
         success = false;
     }
 }
@@ -1900,15 +1480,6 @@ void gOptionsMenu::handleEvent(SDL_Event& e) {
     BGM.handleEventController(&e, BGMTexture.getWidth(), BGMTexture.getHeight(), BGMstatus, TO_DO_SET_VOL_BGM);
 }
 void gOptionsMenu::show() {
-    static int alpha = 0;
-    //Blur
-    if (alpha > 255) alpha = 255;
-    MenuBackground.setAlpha(alpha);
-    alpha += 5;
-
-    //Render menu background
-    //MenuBackground.render(0, 0);
-
     //Render start menu box
     OptionsMenuBox.render((SCREEN_WIDTH - OptionsMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - OptionsMenuBox.getHeight()) / 2);
 
@@ -1948,14 +1519,6 @@ void gOptionsMenu::loadMedia(bool& success) {
     else {
         SFX.setPosition(savedVolumeChunk, 285);
         gSound.setVolumeChunk((double(savedVolumeChunk - THRESHOLD_CONTROLER_LEFT) / (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36)) * 128);
-    }
-    if (!MenuBackground.loadFromFile("imgs/menu/menu_bg.jpg")) {
-        success = false;
-        cout << "Load menu_bg failed! " << endl;
-    }
-    else
-    {
-        MenuBackground.setBlendMode(SDL_BLENDMODE_BLEND);
     }
     if (!BackTexture.loadFromFile("imgs/menu/options/back_button_sheet.png")) {
         success = false;
@@ -1997,7 +1560,7 @@ void gIngameMenu::loadMedia(bool& success) {
     {
         PauseSpriteClips[SWITCH_SPRITE_MOUSE_ON] = { 0,0,65,65 };
         PauseSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
-        Pause.setPosition(10, 10);
+        Pause.setPosition(30, 10);
     }
     if (!OptionsTexture.loadFromFile("imgs/menu/ingame_menu/home_onclick.png")) {
         success = false;
@@ -2007,7 +1570,7 @@ void gIngameMenu::loadMedia(bool& success) {
     {
         OptionsSpriteClips[SWITCH_SPRITE_MOUSE_ON] = { 0,0,65,65 };
         OptionsSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
-        Home.setPosition(95, 10);
+        Home.setPosition(115, 10);
     }
     if (!SoundTexture.loadFromFile("imgs/menu/ingame_menu/sound_onclick.png")) {
         success = false;
@@ -2017,7 +1580,7 @@ void gIngameMenu::loadMedia(bool& success) {
     {
         SoundSpriteClips[SWITCH_SPRITE_MOUSE_ON] = { 0,0,65,65 };
         SoundSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
-        Sound.setPosition(180, 10);
+        Sound.setPosition(200, 10);
     }
 }
 
@@ -2031,14 +1594,14 @@ void gLoseMenu::handleEvent(SDL_Event& e) {
 }
 void gLoseMenu::show() {
 
-    if (SCORE.isHighScore()) tempTexture.loadFromRenderedText("HIGH SCORE", textColor, gFont);
+    if (SCORE.isHighScore()) tempTexture.loadFromRenderedText("HIGH SCORE", textColor, Font);
     else {
-        tempTexture.loadFromRenderedText("YOUR SCORE", textColor, gFont);
+        tempTexture.loadFromRenderedText("YOUR SCORE", textColor, Font);
     }
     timeText.str("");
 
     timeText << SCORE.getScore();
-    yourScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, gFontMedSize);
+    yourScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, FontMedSize);
     loseMenuBox.render((SCREEN_WIDTH - loseMenuBox.getWidth()) / 2, 60);
     if (SCORE.getScore() < 100) {
         fisrtStar[OFF_STAR].render(512, 210);
@@ -2433,6 +1996,24 @@ bool LTimer::isPaused()
 }
 
 //Game sound
+void LSound::free() {
+    //Free the sound effects
+    Mix_FreeChunk(gLoseSound);
+    Mix_FreeChunk(gGainSound);
+    Mix_FreeChunk(gPassSound);
+    Mix_FreeChunk(gJumpSound);
+    gLoseSound = NULL;
+    gGainSound = NULL;
+    gPassSound = NULL;
+    gJumpSound = NULL;
+
+    //Free the music
+    Mix_FreeMusic(gBgm);
+    gBgm = NULL;
+}
+LSound::~LSound() {
+    free();
+}
 bool LSound::isPlayingMusic() {
     return Mix_PlayingMusic();
 }
@@ -2522,10 +2103,10 @@ void LSound::turnOnSound() {
     setVolumeChunk(volumeChunk);
     setVolumeMusic(volumeMusic);
 }
-int LSound::getVolumeMusic() {
+int LSound::getVolumeMusic() const {
     return volumeMusic;
 }
-int LSound::getVolumeChunk() {
+int LSound::getVolumeChunk() const {
     return volumeChunk;
 }
 //Score
@@ -2554,7 +2135,7 @@ void LScore::updateHighScore() {
         isHighSc = true;
         savedScore = score;
         timeText << "HI: " << savedScore;
-        if (!gHighScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, gFont)) {
+        if (!gHighScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, Font)) {
             cout << "Unable to render savedtime texture!" << endl;
         }
     }
@@ -2563,7 +2144,7 @@ void LScore::updateHighScore() {
 void LScore::setScoreFromSaved(const Uint32& sc) {
     savedScore = sc;
     timeText << "HI: " << savedScore;
-    if (!gHighScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, gFont)) {
+    if (!gHighScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, Font)) {
         cout << "Unable to render savedtime texture!" << endl;
     }
 }
@@ -2584,16 +2165,16 @@ void LScore::reStart() {
     if (gTimer.isStarted()) gTimer.start();
 }
 void LScore::render() {
-    if (!gCurrentScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, gFont)) {
+    if (!gCurrentScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, Font)) {
         cout << "Unable to render time texture!" << endl;
     }
     else {
         gCurrentScoreTexture.render(SCREEN_WIDTH - gCurrentScoreTexture.getWidth() - 50, 10);
-        gHighScoreTexture.render(SCREEN_WIDTH - gHighScoreTexture.getWidth() - 200, 10);
+        gHighScoreTexture.render((SCREEN_WIDTH - gHighScoreTexture.getWidth())/2, 10);
     }
 } 
 void LScore::shiftScore() {
-    score = scoreAdded+gTimer.getTicks() / 200;
+    score = scoreAdded+gTimer.getTicks() / 250;
 }
 void LScore::resume() {
     if (gTimer.isPaused()) gTimer.unpause();
@@ -2604,10 +2185,10 @@ bool LScore::isStarted() {
 bool LScore::isHighScore() {
     return isHighSc;
 }
-Uint32 LScore::getHighScore() {
+Uint32 LScore::getHighScore() const{
     return savedScore;
 }
-int LScore::getScore() {
+int LScore::getScore(){
     shiftScore();
     return score;
 }
@@ -2647,7 +2228,7 @@ void LCountDown::show() {
                     timer.start();
                     --count;
                 }
-                if (!textCountDown.loadFromRenderedText(timeText.str(), textColor, gFontBigSize)) {
+                if (!textCountDown.loadFromRenderedText(timeText.str(), textColor, FontBigSize)) {
                     cout << "Failed to load text" << endl;
                 }
             }
@@ -2660,8 +2241,14 @@ bool LCountDown::isEndCountDown() {
     return isEnd;
 }
 
-//Obstacle and item
+//Otter
 gCharacter::gCharacter() {
+    count_run = 0;
+    count_jump = 0;
+    count_fall = 0;
+    count_fastlanding = 0;
+    count_idle = 0;
+
     runPresentFrame = 0;
     jumpPresentFrame = 0;
     fallPresentFrame = 0;
@@ -2907,7 +2494,7 @@ void gCharacter::move()
 }
 void gCharacter::loadMedia(bool& success) {
     if (!run.loadFromFile("imgs/characters/Otter/Run.png")) {
-        cout << "Load Otter run that bai!" << endl;
+        cout << "Load Otter run failed!" << endl;
         success = false;
     }
     else
@@ -2920,7 +2507,7 @@ void gCharacter::loadMedia(bool& success) {
         };
     }
     if (!jump.loadFromFile("imgs/characters/Otter/Jump.png")) {
-        cout << "Load Otter jump that bai!" << endl;
+        cout << "Load Otter jump failed!" << endl;
         success = false;
     }
     else
@@ -2933,7 +2520,7 @@ void gCharacter::loadMedia(bool& success) {
         };
     }
     if (!fall.loadFromFile("imgs/characters/Otter/land.png")) {
-        cout << "Load Otter land that bai!" << endl;
+        cout << "Load Otter land failed!" << endl;
         success = false;
     }
     else
@@ -2946,7 +2533,7 @@ void gCharacter::loadMedia(bool& success) {
         };
     }
     if (!idle.loadFromFile("imgs/characters/Otter/idle.png")) {
-        cout << "Load Otter idle that bai!" << endl;
+        cout << "Load Otter idle failed!" << endl;
         success = false;
     }
     else
@@ -2993,7 +2580,7 @@ int gCharacter::getStatus() {
     return status;
 }
 
-//Obstacle and item properties
+//Obstacle and item
 ObstacleAndItem::ObstacleAndItem() {
     mPosX = 0;
     character = NULL;
@@ -3076,6 +2663,26 @@ int ObstacleAndItem::getWidth() const {
 }
 int ObstacleAndItem::getHeight() const {
     return character->getHeight();
+}
+
+//Obstacle and item properties
+vector<SDL_Rect> ObstacleAndItemProperties::getColliders() const {
+    return mColliders;
+}
+void ObstacleAndItemProperties::setSpritesClips(const vector<SDL_Rect>& spritesClips) {
+    mSpritesClips = spritesClips;
+}
+vector<SDL_Rect> ObstacleAndItemProperties::getSpritesClips() const {
+    return mSpritesClips;
+}
+void ObstacleAndItemProperties::setColliders(const vector<SDL_Rect>& Colliders) {
+    mColliders = Colliders;
+}
+void ObstacleAndItemProperties::setCharacter(LTexture& texture) {
+    character = &texture;
+}
+LTexture* ObstacleAndItemProperties::getCharacter() const {
+    return character;
 }
 
 void RandomObstaclesAndItem(ObstacleAndItem& obstacle, vector <ObstacleAndItemProperties>& randomList) {
@@ -3173,4 +2780,478 @@ bool checkCollision(vector<SDL_Rect>& a, vector<SDL_Rect>& b)
 
     //If neither set of collision boxes touched
     return false;
+}
+void loadFont(bool& success) {
+    Font = TTF_OpenFont("font/Planes_ValMore.ttf", 50);
+    if (Font == NULL)
+    {
+        cout << "Failed to load Planes_ValMore font! SDL_ttf Error: %s\n" << TTF_GetError();
+        success = false;
+    }
+    FontBigSize = TTF_OpenFont("font/Planes_ValMore.ttf", 140);
+    if (FontBigSize == NULL)
+    {
+        cout << "Failed to load Planes_ValMore font! SDL_ttf Error: %s\n" << TTF_GetError();
+        success = false;
+    }
+    FontMedSize = TTF_OpenFont("font/Planes_ValMore.ttf", 80);
+    if (FontMedSize == NULL)
+    {
+        cout << "Failed to load Planes_ValMore font! SDL_ttf Error: %s\n" << TTF_GetError();
+        success = false;
+    }
+}
+void loadRandomList(bool& success) {
+    randomListObstacles.resize(11);
+    randomListCoin.resize(5);
+    randomListGems.resize(3);
+    //Shroom enemy mShroom
+    if (!mShroom_big.loadFromFile("imgs/obstacle/shroom_big.png")) {
+        cout << "Load shroom big enemy failed!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,79,90}
+        };
+        vector <SDL_Rect> Colliders = {
+            {19,0,40,4},
+            {11,4,57,5},
+            {7,9,65,5},
+            {2,14,75,7},
+            {0,20,79,16},
+            {2,36,75,7},
+            {6,43,67,5},
+            {13,48,53,42}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mShroom_big);
+        buffer.setColliders(Colliders);
+        randomListObstacles[SHROOM_BIG] = buffer;
+    }
+    if (!mShroom_medium.loadFromFile("imgs/obstacle/shroom_medium.png")) {
+        cout << "Load shroom small enemy failed!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,66,75}
+        };
+        vector <SDL_Rect> Colliders = {
+            {16,0,33,4},
+            {9,4,48,4},
+            {6,8,54,4},
+            {1,12,63,5},
+            {0,17,66,13},
+            {1,30,64,6},
+            {5,36,56,4},
+            {11,40,44,35}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mShroom_medium);
+        buffer.setColliders(Colliders);
+        randomListObstacles[SHROOM_MEDIUM] = buffer;
+    }
+    if (!mShroom_small.loadFromFile("imgs/obstacle/shroom_small.png")) {
+        cout << "Load shroom small enemy failed!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,53,60}
+        };
+        vector <SDL_Rect> Colliders = {
+            {13,0,27,3},
+            {7,3,39,3},
+            {4,6,45,3},
+            {1,9,51,3},
+            {1,12,51,2},
+            {0,14,53,10},
+            {1,24,51,3},
+            {3,27,47,3},
+            {6,30,41,3},
+            {9,33,35,26}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mShroom_small);
+        buffer.setColliders(Colliders);
+        randomListObstacles[SHROOM_SMALL] = buffer;
+    }
+    if (!mPlantRed_big.loadFromFile("imgs/obstacle/plantred_big.png")) {
+        cout << "Load plantred enemy failed!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,80,90}
+        };
+        vector <SDL_Rect> Colliders = {
+            {27,0,17,3},
+            {25,3,23,3},
+            {25,6,25,3},
+            {24,9,29,3},
+            {9,12,60,3},
+            {7,15,64,3},
+            {7,18,67,8},
+            {3,27,72,6},
+            {1,33,73,4},
+            {0,37,77,5},
+            {0,42,80,6},
+            {1,47,79,6},
+            {3,53,74,7},
+            {4,60,55,8},
+            {20,70,53,20}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantRed_big);
+        buffer.setColliders(Colliders);
+        randomListObstacles[PLANTRED_BIG] = buffer;
+    }
+    if (!mPlantRed_medium.loadFromFile("imgs/obstacle/plantred_medium.png")) {
+        cout << "Load plantred enemy failed!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,66,75}
+        };
+        vector <SDL_Rect> Colliders = {
+            {22,0,16,3},
+            {21,3,19,3},
+            {20,6,23,4},
+            {6,10,53,4},
+            {6,14,55,8},
+            {4,22,58,3},
+            {2,25,60,3},
+            {1,28,60,3},
+            {0,31,64,3},
+            {0,34,66,6},
+            {1,40,65,5},
+            {2,45,61,5},
+            {3,50,46,6},
+            {17,58,43,17}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantRed_medium);
+        buffer.setColliders(Colliders);
+        randomListObstacles[PLANTRED_MEDIUM] = buffer;
+    }
+    if (!mPlantRed_small.loadFromFile("imgs/obstacle/plantred_small.png")) {
+        cout << "Load plantred enemy failed!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,53,60}
+        };
+        vector <SDL_Rect> Colliders = {
+            {18,0,11,2},
+            {17,2,15,2},
+            {17,4,17,2},
+            {16,6,19,2},
+            {6,8,40,2},
+            {5,10,42,2},
+            {5,12,44,6},
+            {3,18,47,2},
+            {2,20,48,2},
+            {1,22,48,2},
+            {0,25,52,3},
+            {0,28,53,6},
+            {2,34,50,6},
+            {3,40,36,2},
+            {5,42,34,3},
+            {13,46,35,14}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantRed_small);
+        buffer.setColliders(Colliders);
+        randomListObstacles[PLANTRED_SMALL] = buffer;
+    }
+
+    if (!mPlantViolet_big.loadFromFile("imgs/obstacle/plantviolet_big.png")) {
+        cout << "Load plantviolet enemy failed!" << endl;
+        success = false;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,79,90}
+        };
+        vector <SDL_Rect> Colliders = {
+            {6,70,67,20},
+            {12,56,55,15},
+            {0,50,79,6},
+            {2,42,75,8},
+            {1,21,77,21},
+            {2,12,75,9},
+            {0,0,79,12}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantViolet_big);
+        buffer.setColliders(Colliders);
+        randomListObstacles[PLANTVIOLET_BIG] = buffer;
+    }
+    if (!mPlantViolet_medium.loadFromFile("imgs/obstacle/plantviolet_medium.png")) {
+        cout << "Load plantviolet enemy failed!" << endl;
+        success = false;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,66,75}
+        };
+        vector <SDL_Rect> Colliders = {
+            {5,58,56,17},
+            {10,47,47,11},
+            {0,42,66,5},
+            {2,36,62,6},
+            {1,18,64,19},
+            {1,10,64,8},
+            {0,0,66,10}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantViolet_medium);
+        buffer.setColliders(Colliders);
+        randomListObstacles[PLANTVIOLET_MEDIUM] = buffer;
+    }
+    if (!mPlantViolet_small.loadFromFile("imgs/obstacle/plantviolet_small.png")) {
+        cout << "Load plantviolet enemy failed!" << endl;
+        success = false;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,53,60}
+        };
+        vector <SDL_Rect> Colliders = {
+            {0,0,53,38},
+            {8,37,37,9},
+            {6,46,40,6},
+            {4,52,45,8}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mPlantViolet_small);
+        buffer.setColliders(Colliders);
+        randomListObstacles[PLANTVIOLET_SMALL] = buffer;
+    }
+    if (!mMaleBee.loadFromFile("imgs/obstacle/malebee.png")) {
+        cout << "Load mGogleEyesBee enemy failed!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,61,40},
+            {62,0,61,40}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,2,55,36}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mMaleBee);
+        buffer.setColliders(Colliders);
+        randomListObstacles[BEE_MALE] = buffer;
+    }
+    if (!mFemaleBee.loadFromFile("imgs/obstacle/femalebee.png")) {
+        cout << "Load mGogleEyesBee enemy failed!" << endl;
+        success = false;
+    }
+    else {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,61,40},
+            {62,0,61,40}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,2,55,36}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mFemaleBee);
+        buffer.setColliders(Colliders);
+        randomListObstacles[BEE_FEMALE] = buffer;
+    }
+
+    //Coin
+    if (!mCoinAma.loadFromFile("imgs/coingems/CoinAma.png")) {
+        success = false;
+        cout << "" << endl;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,48,48},
+           {48,0,48,48},
+           {96,0,48,48},
+           {144,0,48,48}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,3,30,45}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mCoinAma);
+        buffer.setColliders(Colliders);
+        randomListCoin[COIN_AMA] = buffer;
+    }
+    if (!mCoinAzu.loadFromFile("imgs/coingems/CoinAzu.png")) {
+        success = false;
+        cout << "" << endl;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,48,48},
+           {48,0,48,48},
+           {96,0,48,48},
+           {144,0,48,48}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,3,30,45}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mCoinAzu);
+        buffer.setColliders(Colliders);
+        randomListCoin[COIN_AZU] = buffer;
+    }
+    if (!mCoinRoj.loadFromFile("imgs/coingems/CoinRoj.png")) {
+        success = false;
+        cout << "" << endl;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,48,48},
+           {48,0,48,48},
+           {96,0,48,48},
+           {144,0,48,48}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,3,30,45}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mCoinRoj);
+        buffer.setColliders(Colliders);
+        randomListCoin[COIN_ROJ] = buffer;
+    }
+    if (!mCoinGri.loadFromFile("imgs/coingems/CoinGri.png")) {
+        success = false;
+        cout << "" << endl;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,48,48},
+           {48,0,48,48},
+           {96,0,48,48},
+           {144,0,48,48}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,3,30,45}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mCoinGri);
+        buffer.setColliders(Colliders);
+        randomListCoin[COIN_GRI] = buffer;
+    }
+    if (!mCoinStrip.loadFromFile("imgs/coingems/CoinStrip.png")) {
+        success = false;
+        cout << "" << endl;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,48,48},
+           {48,0,48,48},
+           {96,0,48,48},
+           {144,0,48,48}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,3,30,45}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mCoinStrip);
+        buffer.setColliders(Colliders);
+        randomListCoin[COIN_STRIP] = buffer;
+    }
+
+    //Gems
+    if (!mMonedaD.loadFromFile("imgs/coingems/MonedaD.png")) {
+        success = false;
+        cout << "" << endl;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+            {0,0,48,48},
+            {48,0,48,48},
+            {96,0,48,48},
+            {144,0,48,48},
+            {192,0,48,48}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,0,42,48}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mMonedaD);
+        buffer.setColliders(Colliders);
+        randomListGems[GEMS_MONEDA_D] = buffer;
+    }
+    if (!mMonedaP.loadFromFile("imgs/coingems/MonedaP.png")) {
+        success = false;
+        cout << "" << endl;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+           {0,0,48,48},
+           {48,0,48,48},
+           {96,0,48,48},
+           {144,0,48,48},
+           {192,0,48,48}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,0,42,48}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mMonedaP);
+        buffer.setColliders(Colliders);
+        randomListGems[GEMS_MONEDA_P] = buffer;
+    }
+    if (!mMonedaR.loadFromFile("imgs/coingems/MonedaR.png")) {
+        success = false;
+        cout << "" << endl;
+    }
+    else
+    {
+        vector <SDL_Rect> spritesClips = {
+           {0,0,48,48},
+           {48,0,48,48},
+           {96,0,48,48},
+           {144,0,48,48},
+           {192,0,48,48}
+        };
+        vector <SDL_Rect> Colliders = {
+            {3,0,42,48}
+        };
+        ObstacleAndItemProperties buffer;
+        buffer.setSpritesClips(spritesClips);
+        buffer.setCharacter(mMonedaR);
+        buffer.setColliders(Colliders);
+        randomListGems[GEMS_MONEDA_R] = buffer;
+    }
 }
