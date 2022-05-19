@@ -9,557 +9,73 @@
 #include <SDL_mixer.h>
 #include <string>
 #include <vector>
+#include <SDL_ttf.h>
 #include <sstream>
 #include <math.h>
+#include "LTexture.h"
+#include "Ltimer.h"
+#include "LSound.h"
+#include "LCountDown.h"
+#include "CommonFunction.h"
+#include "gBackground.h"
+#include "LScore.h"
+#include "LButton.h"
+#include "gStartMenu.h"
+#include "gIntroduceMenu.h"
+#include "gPauseMenu.h"
+#include "gOptionsMenu.h"
+#include "gIngameMenu.h"
+#include "gLoseMenu.h"
+#include "gExitMenu.h"
 using namespace std;
 
 bool init();
 bool loadMedia();
 void clode();
-
-SDL_Window* gWindow = NULL;
-SDL_Renderer* gRenderer = NULL;
-
+void mainGameInit();
+bool checkCollision(vector<SDL_Rect>& a, vector<SDL_Rect>& b);
+void increasingDifficultyLevels(int& speedRender, LScore& score);
+void loadFont(bool& success);
+void loadRandomList(bool& success);
+int generateRandomNumber(const int min, const int max);
+//Font Declare
 TTF_Font* Font = NULL;
 TTF_Font* FontBigSize = NULL;
 TTF_Font* FontMedSize = NULL;
 
-bool quit = false;
-
-const int SCREEN_WIDTH = 1280;
-const int SCREEN_HEIGHT = 720;
-
-//speed render
-int speedRender = 0;
-int speedRenderSaved = 0;
-int saved_speedRender = 10;
-
-enum TO_DO {
-    TO_DO_START,
-    TO_DO_BACK,
-    TO_DO_RESUME,
-    TO_DO_RESTART,
-    TO_DO_PAUSE,
-    TO_DO_EXIT_MENU,
-    TO_DO_EXIT,
-    TO_DO_OPTIONS,
-    TO_DO_SET_VOL_BGM,
-    TO_DO_SET_VOL_SFX,
-    TO_DO_TURN_OFF_SOUND,
-    TO_DO_TURN_ON_SOUND,
-    TO_DO_BACK_HOME,
-    TO_DO_COUNTDOWN,
-    TO_DO_INTRODUCE
-};
-enum ONOFFSTAR {
-    OFF_STAR = 0,
-    ON_STAR = 1,
-    ONOFF_STAR_TOTAL = 2
-};
-enum GAME_STATUS {
-    GAME_STATUS_IDLE,
-    GAME_STATUS_PLAYING,
-    GAME_STATUS_PAUSED,
-    GAME_STATUS_LOSE
-};
-enum MENU_STATUS {
-    MENU_STATUS_START,
-    MENU_STATUS_PLAYING,
-    MENU_STATUS_PAUSED,
-    MENU_STATUS_OPTIONS,
-    MENU_STATUS_COUNTDOWN,
-    MENU_STATUS_LOSE,
-    MENU_STATUS_EXIT,
-    MENU_STATUS_INTRODUCE
-};
-enum INDEX_LIST_OBSTACLES {
-    SHROOM_BIG,
-    SHROOM_MEDIUM,
-    SHROOM_SMALL,
-    PLANTRED_BIG,
-    PLANTRED_MEDIUM,
-    PLANTRED_SMALL,
-    PLANTVIOLET_BIG,
-    PLANTVIOLET_MEDIUM,
-    PLANTVIOLET_SMALL,
-    BEE_MALE,
-    BEE_FEMALE,
-    OBSTACLES_TOTAL
-};
-enum INDEX_LIST_GEMS {
-    GEMS_MONEDA_D,
-    GEMS_MONEDA_P,
-    GEMS_MONEDA_R,
-    GEMS_TOTAL
-};
-enum INDEX_LIST_COIN {
-    COIN_AMA,
-    COIN_AZU,
-    COIN_ROJ,
-    COIN_GRI,
-    COIN_STRIP,
-    COIN_TOTAL
-};
-enum Otter_Sheet_Height {
-    RUN_SHEET_HEIGHT = 160,
-    JUMP_SHEET_HEIGHT = 160,
-    FALL_SHEET_HEIGHT = 160,
-    FAST_LANDING_HEIGHT = 160
-};
-enum STATUS {
-    RUN = 0,
-    JUMP = 1,
-    FALL = 2,
-    FASTLANDING = 3
-};
-enum LSwitchSprite {
-    SWITCH_SPRITE_MOUSE_ON = 0,
-    SWITCH_SPRITE_MOUSE_OFF = 1,
-    SWITCH_SPRITE_TOTAL = 2
-};
-enum LButtonSprite
-{
-    BUTTON_SPRITE_MOUSE_OUT = 0,
-    BUTTON_SPRITE_MOUSE_OVER_MOTION = 1,
-    BUTTON_SPRITE_MOUSE_DOWN = 2,
-    BUTTON_SPRITE_MOUSE_UP = 3,
-    BUTTON_SPRITE_TOTAL = 4
-};
+SDL_Window* gWindow = NULL;
+SDL_Renderer* gRenderer = NULL;
 
 MENU_STATUS menuStatus = MENU_STATUS_START;
 MENU_STATUS menuPre = menuStatus;
 GAME_STATUS gameStatus = GAME_STATUS_IDLE;
-void mainGameInit();
-void handle(const TO_DO& todo, const double& v = MIX_MAX_VOLUME);
-
-const int numberOfrunClips = 3;
-const int numberOfjumpClips = 1;
-const int numberOffallClips = 1;
-const int numberOffastlandingClips = 1;
-
-class ControllerStatus {
-public:
-    bool isClick;
-    int x_len;
-    int y_len;
-    ControllerStatus() {
-        isClick = false;
-        x_len = 0;
-        y_len = 0;
-    }
-};
-//Threshold controller
-const int THRESHOLD_CONTROLER_LEFT = 570;
-const int THRESHOLD_CONTROLER_RIGHT = 850;
-const int BUTTON_WIDTH = 320;
-const int BUTTON_HEIGHT = 113;
-
-class LTexture {
-public:
-    LTexture();
-    ~LTexture();
-
-    bool loadFromFile(string path);
-    void free();
-
-#if defined(SDL_TTF_MAJOR_VERSION)
-    //Creates image from font string
-    bool loadFromRenderedText(std::string textureText, SDL_Color textColor, TTF_Font* gFont);
-#endif
-
-    //set color mudulation
-    void setColor(Uint8 red, Uint8 green, Uint8 blue);
-
-    //set blending
-    void setBlendMode(SDL_BlendMode blending);
-    void setAlpha(Uint8 alpha);
-
-    void render(int x, int y, SDL_Rect* clip = NULL, int mScale = 1);
-
-    int getWidth() const;
-    int getHeight() const;
-private:
-    SDL_Texture* mTexture;
-
-    int mWidth;
-    int mHeight;
-};
-class LTimer
-{
-public:
-    //Initializes variables
-    LTimer();
-
-    //The various clock actions
-    void start();
-    void stop();
-    void pause();
-    void unpause();
-
-    //Gets the timer's time
-    Uint32 getTicks();
-
-    //Checks the status of the timer
-    bool isStarted();
-    bool isPaused();
-
-private:
-    //The clock time when the timer started
-    Uint32 mStartTicks;
-
-    //The ticks stored when the timer was paused
-    Uint32 mPausedTicks;
-
-    //The timer status
-    bool mPaused;
-    bool mStarted;
-};
-
-class LSound {
-private:
-    Mix_Music* gBgm;
-    Mix_Chunk* gLoseSound;
-    Mix_Chunk* gJumpSound;
-    Mix_Chunk* gPassSound;
-    Mix_Chunk* gGainSound;
-    //MIX_MAX_VOLUME=128
-    int volumeMusic = 128;
-    int volumeChunk = 128;
-    
-    int savedVolumeMusic = volumeMusic;
-    int savedVolumeChunk = volumeChunk;
-public:
-    bool isPlayingMusic();
-    bool isPausedMusic();
-    void StopMusic();
-    void PlayMusic();
-    void PlayPassSound();
-    void PauseMusic();
-    void ResumeMusic();
-    void PlayJumpSound();
-    void PlayGainSound();
-    void PlayLoseSound();
-    int getVolumeMusic() const;
-    int getVolumeChunk() const;
-    void setVolumeMusic(const int& v);
-    void setVolumeChunk(const int& v);
-    void turnOffSound();
-    void turnOnSound();
-    void loadMedia(bool& success);
-    void free();
-    ~LSound();
-};
-LSound gSound;
-
-class LCountDown {
-private:
-    int count;
-    bool isEnd;
-    stringstream timeText;
-    LTexture textCountDown;
-    LTimer timer;
-    SDL_Color textColor = { 255, 255, 255, 255 };
-public:
-    void init();
-    LCountDown();
-    void render();
-    void show();
-    bool isEndCountDown();
-};
-LCountDown gCountDown;
-
-class LScore {
-private:
-    SDL_Color textColor = { 255, 255, 255, 255 };
-    //Text render
-    LTexture gCurrentScoreTexture;
-    LTexture gHighScoreTexture;
-
-    //Current time start time
-    Uint32 startTime = 0;
-    stringstream timeText;
-    LTimer gTimer;
-
-    //ishighscore
-    bool isHighSc=false;
-    Uint32 score = 0;
-    Uint32 savedScore = 0;
-    Uint32 scoreAdded = 0;
-public:
-    void process();
-    void pause();
-    void start();
-    void reStart();
-    void render();
-    void shiftScore();
-    void addScore(const Uint32& sc);
-    void resume();
-    void stop();
-    void updateHighScore();
-    int getScore();
-    bool isStarted();
-    void setScoreFromSaved(const Uint32& sc);
-    Uint32 getHighScore() const;
-    bool isHighScore();
-    void loadMedia(bool& success);
-};
-LScore SCORE;
-
-//Button
-class LButton
-{
-public:
-    //Initializes internal variables
-    LButton();
-
-    //Sets top left position
-    void setPosition(int x, int y);
-
-    //Handles mouse event
-    void handleEventController(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, ControllerStatus& status,const TO_DO &todo);
-    void handleEventSwitch(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, bool& isOn, const TO_DO& todo);
-
-    void handleEvent(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT,const TO_DO &todo=TO_DO_START, bool isBack = false);
-    //Shows button sprite
-    void render(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]);
-    void renderSwitch(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]);
-    void renderController(LTexture& gButtonSpriteSheetTexture);
-    void setPositionX(const int& x);
-
-private:
-    //Top left position
-    SDL_Point mPosition;
-
-    //Currently used global sprite
-    LButtonSprite mCurrentSprite;
-
-    //Currently used global sprite
-    LSwitchSprite mSwitchCurrentSprite;
-    //Switch status
-};
-
-class gStartMenu {
-private:
-    //Start menu texture
-    LTexture StartMenuBox;
-    LTexture ButtonTexture;
-    LTexture IntroduceButtonTexture;
-
-    SDL_Color textColor = {255,255,255,255};
-    LTexture GameTitleText;
-
-    //Button
-    LButton Start;
-    LButton Options;
-    LButton Exit;
-    LButton Introduce;
-
-    //Clips
-    SDL_Rect StartSpriteClips[BUTTON_SPRITE_TOTAL];
-    SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
-    SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
-    SDL_Rect IntroduceSpriteClips[BUTTON_SPRITE_TOTAL];
-public:
-    gStartMenu() {};
-    void handleEvent(SDL_Event& e);
-    void show();
-    void loadMedia(bool& success);
-};
-gStartMenu START_MENU;
-
-class gIntroduceMenu {
-private:
-    //Start menu texture
-    LTexture IntroduceMenuBox;
-    LTexture BackTexture;
-
-    //Button
-    LButton Back;
-
-    //Clips
-    SDL_Rect BackSpriteClips[BUTTON_SPRITE_TOTAL];
-public:
-    gIntroduceMenu() {};
-    void handleEvent(SDL_Event& e);
-    void show();
-    void loadMedia(bool& success);
-};
-gIntroduceMenu INTRODUCE_MENU;
-
-class gPauseMenu {
-private:
-    //Start menu texture
-    LTexture PauseMenuBox;
-    LTexture ButtonTexture;
-
-    //Button
-    LButton ReStart;
-    LButton Resume;
-    LButton Options;
-    LButton Exit;
-
-    //Clips
-    SDL_Rect ReStartSpriteClips[BUTTON_SPRITE_TOTAL];
-    SDL_Rect ResumeSpriteClips[BUTTON_SPRITE_TOTAL];
-    SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
-    SDL_Rect ExitSpriteClips[BUTTON_SPRITE_TOTAL];
-public:
-    gPauseMenu() {};
-    void handleEvent(SDL_Event& e);
-    void show();
-    void loadMedia(bool& success);
-};
-gPauseMenu PAUSE_MENU;
-
-class gOptionsMenu {
-private:
-    //Start menu texture
-    LTexture OptionsMenuBox;
-    LTexture BGMTexture;
-    LTexture SFXTexture;
-    LTexture BackTexture;
-
-    //Button
-    LButton Back;
-    LButton SFX;
-    LButton BGM;
-
-    //status
-    ControllerStatus SFXstatus;
-    ControllerStatus BGMstatus;
-
-    //Clips
-    SDL_Rect BackSpriteClips[BUTTON_SPRITE_TOTAL];
-public:
-    gOptionsMenu() {};
-    void handleEvent(SDL_Event& e);
-    void show();
-    void setPositionX_BGM(const int& x);
-    void setPositionX_SFX(const int& x);
-    void loadMedia(bool& success);
-};
-gOptionsMenu OPTIONS_MENU;
-
-class gIngameMenu {
-private:
-    //Start menu texture
-    LTexture PauseTexture;
-    LTexture OptionsTexture;
-    LTexture SoundTexture;
-
-    //Button
-    LButton Pause;
-    LButton Home;
-    LButton Sound;
-
-    //Clips
-    SDL_Rect PauseSpriteClips[BUTTON_SPRITE_TOTAL];
-    SDL_Rect OptionsSpriteClips[BUTTON_SPRITE_TOTAL];
-    SDL_Rect SoundSpriteClips[BUTTON_SPRITE_TOTAL];
-public:
-    //status
-    bool isPauseOn;
-    bool isSoundOn;
-    bool isOptionsOn;
-
-    gIngameMenu();
-    void handleEvent(SDL_Event& e);
-    void show();
-    void loadMedia(bool& success);
-};
-gIngameMenu INGAME_MENU;
-
-class gLoseMenu { 
-private:
-    SDL_Color textColor = { 255, 255, 255, 255 };
-    LTexture loseMenuBox;
-    LTexture reStartTexture;
-    LTexture fisrtStar[ONOFF_STAR_TOTAL];
-    LTexture secondStar[ONOFF_STAR_TOTAL];
-    LTexture thirdStar[ONOFF_STAR_TOTAL];
-
-    LTexture tempTexture;
-    LTexture yourScoreTexture;
-    stringstream timeText;
-    LButton reStart;
-    SDL_Rect reStartSpriteClips[BUTTON_SPRITE_TOTAL];
-
-public:
-    gLoseMenu() {};
-    void handleEvent(SDL_Event& e);
-    void show();
-    void loadMedia(bool& success);
-};
-gLoseMenu LOSE_MENU;
-
-class gExitMenu {
-private:
-    //Start menu texture
-    LTexture ExitMenuBox;
-    LTexture ButtonTexture;
-
-    //Button
-    LButton Yes;
-    LButton No;
-
-    //Clips
-    SDL_Rect YesSpriteClips[BUTTON_SPRITE_TOTAL];
-    SDL_Rect NoSpriteClips[BUTTON_SPRITE_TOTAL];
-public:
-    gExitMenu() {};
-    void handleEvent(SDL_Event& e);
-    void show();
-    void loadMedia(bool& success);
-};
-gExitMenu EXIT_MENU;
-
-bool checkCollision(vector<SDL_Rect>& a, vector<SDL_Rect>& b);
-void increasingDifficultyLevels(int& speedRender, LScore& score);
-
-class gBackground {
-private:
-    LTexture Layer1;
-    LTexture Layer2;
-    LTexture Layer3;
-    LTexture Layer4;
-    LTexture Ground;
-public:
-    gBackground(){}
-    void render(int speedRender);
-    void loadMedia(bool& success);
-};
-gBackground BACKGROUND;
-
-const int GROUND = SCREEN_HEIGHT - 70;
-const int JUMP_MAX = 250;
-const double GRAVITY = 120;
 
 //Obstacles
-LTexture mShroom_big;
-LTexture mShroom_medium;
-LTexture mShroom_small;
+static LTexture mShroom_big;
+static LTexture mShroom_medium;
+static LTexture mShroom_small;
 
-LTexture mPlantViolet_big;
-LTexture mPlantViolet_medium;
-LTexture mPlantViolet_small;
+static LTexture mPlantViolet_big;
+static LTexture mPlantViolet_medium;
+static LTexture mPlantViolet_small;
 
-LTexture mPlantRed_small;
-LTexture mPlantRed_medium;
-LTexture mPlantRed_big;
+static LTexture mPlantRed_small;
+static LTexture mPlantRed_medium;
+static LTexture mPlantRed_big;
 
-LTexture mMaleBee;
-LTexture mFemaleBee;
+static LTexture mMaleBee;
+static LTexture mFemaleBee;
 
 //Coin Gems
-LTexture mMonedaD;
-LTexture mMonedaP;
-LTexture mMonedaR;
+static LTexture mMonedaD;
+static LTexture mMonedaP;
+static LTexture mMonedaR;
 
-LTexture mCoinAma;
-LTexture mCoinAzu;
-LTexture mCoinRoj;
-LTexture mCoinGri;
-LTexture mCoinStrip;
+static LTexture mCoinAma;
+static LTexture mCoinAzu;
+static LTexture mCoinRoj;
+static LTexture mCoinGri;
+static LTexture mCoinStrip;
 
 class ObstacleAndItem {
 private:
@@ -606,12 +122,10 @@ public:
     void setCharacter(LTexture& texture);
     LTexture* getCharacter() const;
 };
-vector <ObstacleAndItemProperties> randomListObstacles;
-vector <ObstacleAndItemProperties> randomListCoin;
-vector <ObstacleAndItemProperties> randomListGems;
-void loadFont(bool& success);
-void loadRandomList(bool& success);
-int generateRandomNumber(const int min, const int max);
+static vector <ObstacleAndItemProperties> randomListObstacles;
+static vector <ObstacleAndItemProperties> randomListCoin;
+static vector <ObstacleAndItemProperties> randomListGems;
+
 void RandomObstaclesAndItem(ObstacleAndItem& obstacle, vector <ObstacleAndItemProperties>& randomList);
 
 class gCharacter {
@@ -636,7 +150,7 @@ private:
 
     //timer
     LTimer timeJump;
-    int status;
+    CHARACTER_ACTION action;
     //SDL_Rect mCollinder;
     vector<SDL_Rect> mCollidersRun[numberOfrunClips];
     vector<SDL_Rect> mCollidersRun_offset[numberOfrunClips];
@@ -677,7 +191,7 @@ public:
     vector <SDL_Rect>& getColliders();
     int getStatus();
 };
-gCharacter Otter;
+static gCharacter Otter;
 
 bool init() {
     bool success = true;
@@ -732,44 +246,31 @@ bool init() {
 }
 bool loadMedia() {
     bool success = true;
-
     //Font
     loadFont(success);
-
     //Otter
     Otter.loadMedia(success);
-
     //Sound
     gSound.loadMedia(success);
-
     //Score
-    SCORE.loadMedia(success);
-
+    SCORE.loadMedia(success,gRenderer,Font);
     //START MENU
-    START_MENU.loadMedia(success);
-    
+    START_MENU.loadMedia(success, gRenderer,FontBigSize);
     //PAUSE MENU
-    PAUSE_MENU.loadMedia(success);
-    
+    PAUSE_MENU.loadMedia(success,gRenderer);
     //OPTIONS MENU
-    OPTIONS_MENU.loadMedia(success);
-    
+    OPTIONS_MENU.loadMedia(success, gRenderer, gSound);
     //Exit menu
-    EXIT_MENU.loadMedia(success);
-    
+    EXIT_MENU.loadMedia(success,gRenderer);
     //Ingame menu
-    INGAME_MENU.loadMedia(success);
-    
+    INGAME_MENU.loadMedia(success,gRenderer);
     //Lose menu
-    LOSE_MENU.loadMedia(success);
-    
-    INTRODUCE_MENU.loadMedia(success);
+    LOSE_MENU.loadMedia(success,gRenderer);
+    INTRODUCE_MENU.loadMedia(success,gRenderer);
     //Background
-    BACKGROUND.loadMedia(success);
-
+    BACKGROUND.loadMedia(success, gRenderer);
     //Load random list
     loadRandomList(success);
-
     return success;
 }
 void close() {
@@ -803,25 +304,25 @@ void close() {
 }
 
 //DECLARE
-vector <int> randomListDistance = { 100, 300, 500, 200, 400};
-vector <int> randomListCoinTime = { 4, 5, 6};
-vector <int> randomListGemsTime = {12, 14, 16};
-ObstacleAndItem firstPlant, secondPlant;
-vector <ObstacleAndItem> loopEnemy;
+static vector <int> randomListDistance = { 100, 300, 500, 200, 400};
+static vector <int> randomListCoinTime = { 4, 5, 6};
+static vector <int> randomListGemsTime = {12, 14, 16};
+static ObstacleAndItem firstPlant, secondPlant;
+static vector <ObstacleAndItem> loopEnemy;
 
 //Coin
-ObstacleAndItem coin;
-LTimer coinRandomTimer;
-int coinRandomTime;
-bool isCoinShow;
-vector <ObstacleAndItem> loopCoin;
+static ObstacleAndItem coin;
+static LTimer coinRandomTimer;
+static int coinRandomTime;
+static bool isCoinShow;
+static vector <ObstacleAndItem> loopCoin;
 
 //Gems
-ObstacleAndItem gems;
-LTimer gemsRandomTimer;
-int gemsRandomTime;
-bool isGemsShow;
-vector <ObstacleAndItem> loopGems;
+static ObstacleAndItem gems;
+static LTimer gemsRandomTimer;
+static int gemsRandomTime;
+static bool isGemsShow;
+static vector <ObstacleAndItem> loopGems;
 
 void mainGameInit() {
     //first plant obstacle
@@ -933,7 +434,7 @@ void handle(const TO_DO& todo, const double &v) {
 }
 void mainGameProcess() {
     //Background render
-    BACKGROUND.render(speedRender);
+    BACKGROUND.render(gRenderer,speedRender);
     vector<SDL_Rect> rect_run = Otter.getColliders();
     for (int i = 0; i < loopEnemy.size(); ++i) {
         if (!loopEnemy[i].isOver()) {
@@ -948,7 +449,7 @@ void mainGameProcess() {
             if (checkCollision(rect_obstacles, rect_run)) {
                 SCORE.pause();
                 speedRender = 0;
-                SCORE.updateHighScore();
+                SCORE.updateHighScore(gRenderer,Font);
                 if (gameStatus == GAME_STATUS_PLAYING) gSound.PlayLoseSound();
                 gameStatus = GAME_STATUS_LOSE;
                 menuStatus = MENU_STATUS_LOSE;
@@ -1038,7 +539,7 @@ void mainGameProcess() {
     increasingDifficultyLevels(speedRender, SCORE);
     //Score render
     SCORE.process();
-    SCORE.render();
+    SCORE.render(gRenderer,Font);
 }
 
 int main(int argc, char* argv[])
@@ -1067,41 +568,39 @@ int main(int argc, char* argv[])
                     switch (menuStatus)
                     {
                     case MENU_STATUS_START:
-                        START_MENU.handleEvent(e);
+                        START_MENU.handleEvent(e, menuStatus, menuPre);
                         if (e.type == SDL_KEYDOWN)
                             if ((e.key.keysym.sym == SDLK_SPACE) && e.key.repeat == 0) handle(TO_DO_START);
                         break;
                     case MENU_STATUS_PLAYING:
                         Otter.handleEvent(e);
-                        INGAME_MENU.handleEvent(e);
+                        INGAME_MENU.handleEvent(e,gameStatus);
                         if (e.type == SDL_KEYDOWN)
                             if (e.key.keysym.sym == SDLK_ESCAPE && e.key.repeat == 0) handle(TO_DO_PAUSE);
                         break;
                     case MENU_STATUS_PAUSED:
-                        PAUSE_MENU.handleEvent(e);
-                        INGAME_MENU.handleEvent(e);
+                        PAUSE_MENU.handleEvent(e,menuStatus, menuPre);
+                        INGAME_MENU.handleEvent(e,gameStatus);
                         if (e.type == SDL_KEYDOWN)
                             if ((e.key.keysym.sym == SDLK_ESCAPE|| e.key.keysym.sym ==SDLK_SPACE) && e.key.repeat == 0) handle(TO_DO_COUNTDOWN);
                         break;
                     case MENU_STATUS_OPTIONS:
-                        OPTIONS_MENU.handleEvent(e);
-                        INGAME_MENU.handleEvent(e);
+                        OPTIONS_MENU.handleEvent(e,menuStatus, menuPre);
+                        INGAME_MENU.handleEvent(e,gameStatus);
                         break;
                     case MENU_STATUS_LOSE:
-                        LOSE_MENU.handleEvent(e);
-                        INGAME_MENU.handleEvent(e);
+                        LOSE_MENU.handleEvent(e,menuStatus, menuPre);
+                        INGAME_MENU.handleEvent(e,gameStatus);
                         if (e.type == SDL_KEYDOWN)
                             if (e.key.keysym.sym == SDLK_ESCAPE && e.key.repeat == 0) handle(TO_DO_BACK_HOME);
                         break;
                     case MENU_STATUS_EXIT:
-                        EXIT_MENU.handleEvent(e);
+                        EXIT_MENU.handleEvent(e,menuStatus,menuPre);
                         break;
                     case MENU_STATUS_INTRODUCE:
-                        INTRODUCE_MENU.handleEvent(e);
+                        INTRODUCE_MENU.handleEvent(e, menuStatus, menuPre);
                         break;
                     }
-                    
-
                 }
                 SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
                 SDL_RenderClear(gRenderer);
@@ -1109,30 +608,30 @@ int main(int argc, char* argv[])
                 mainGameProcess();
 
                 if (gameStatus == GAME_STATUS_PLAYING || gameStatus == GAME_STATUS_PAUSED || gameStatus == GAME_STATUS_LOSE) {
-                    INGAME_MENU.show();
+                    INGAME_MENU.show(gRenderer);
                 }
                 switch (menuStatus)
                 {
                     case MENU_STATUS_START:
-                        START_MENU.show();
+                        START_MENU.show(gRenderer, FontBigSize);
                         break;
                     case MENU_STATUS_INTRODUCE:
-                        INTRODUCE_MENU.show();
+                        INTRODUCE_MENU.show(gRenderer);
                         break;
                     case MENU_STATUS_PAUSED:
-                        PAUSE_MENU.show();
+                        PAUSE_MENU.show(gRenderer);
                         break;
                     case MENU_STATUS_OPTIONS:
-                        OPTIONS_MENU.show();
+                        OPTIONS_MENU.show(gRenderer);
                         break;
                     case MENU_STATUS_LOSE:
-                        LOSE_MENU.show();
+                        LOSE_MENU.show(gRenderer, Font, FontMedSize, SCORE);
                         break;
                     case MENU_STATUS_EXIT:
-                        EXIT_MENU.show();
+                        EXIT_MENU.show(gRenderer);
                         break;
                     case MENU_STATUS_COUNTDOWN:
-                        if (!gCountDown.isEndCountDown()) gCountDown.show(); else handle(TO_DO_RESUME);
+                        if (!gCountDown.isEndCountDown()) gCountDown.show(gRenderer, FontBigSize); else handle(TO_DO_RESUME);
                         break;
                 }
                 
@@ -1143,1102 +642,6 @@ int main(int argc, char* argv[])
     }
     close();
     return 0;
-}
-
-//Texture
-LTexture::LTexture() {
-    mTexture = NULL;
-    mHeight = 0;
-    mWidth = 0;
-}
-LTexture::~LTexture()
-{
-    free();
-}
-bool LTexture::loadFromFile(string path) {
-    free();
-
-    SDL_Texture* newTexture = NULL;
-    SDL_Surface* loadedSurface = IMG_Load(path.c_str());
-    if (loadedSurface == NULL) {
-        cout << "Failed to load image: " << path << " " << IMG_GetError();
-    }
-    else
-    {
-        newTexture = SDL_CreateTextureFromSurface(gRenderer, loadedSurface);
-        if (newTexture == NULL) {
-            cout << "Failed to create texture from surface: " << path << " " << SDL_GetError();
-        }
-        else
-        {
-            mWidth = loadedSurface->w;
-            mHeight = loadedSurface->h;
-        }
-        SDL_FreeSurface(loadedSurface);
-    }
-    mTexture = newTexture;
-    return mTexture != NULL;
-}
-void LTexture::free() {
-    if (mTexture != NULL) {
-        SDL_DestroyTexture(mTexture);
-        mTexture = NULL;
-        mWidth = 0;
-        mHeight = 0;
-    }
-}
-void LTexture::setColor(Uint8 red, Uint8 green, Uint8 blue) {
-    SDL_SetTextureColorMod(mTexture, red, green, blue);
-}
-void LTexture::setBlendMode(SDL_BlendMode blending)
-{
-    //Set blending function
-    SDL_SetTextureBlendMode(mTexture, blending);
-}
-void LTexture::setAlpha(Uint8 alpha) {
-    SDL_SetTextureAlphaMod(mTexture, alpha);
-}
-void LTexture::render(int x, int y, SDL_Rect* clip, int mScale) {
-    SDL_Rect renderQuad = { x,y,mWidth, mHeight };
-    if (clip != NULL) {
-        renderQuad.w = clip->w * mScale;
-        renderQuad.h = clip->h * mScale;
-    }
-    SDL_RenderCopy(gRenderer, mTexture, clip, &renderQuad);
-}
-int LTexture::getHeight() const {
-    return mHeight;
-}
-int LTexture::getWidth() const {
-    return mWidth;
-}
-#if defined(SDL_TTF_MAJOR_VERSION)
-bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor, TTF_Font* gFont)
-{
-    //Get rid of preexisting texture
-    free();
-
-    //Render text surface
-    SDL_Surface* textSurface = TTF_RenderText_Solid(gFont, textureText.c_str(), textColor);
-    if (textSurface != NULL)
-    {
-        //Create texture from surface pixels
-        mTexture = SDL_CreateTextureFromSurface(gRenderer, textSurface);
-        if (mTexture == NULL)
-        {
-            cout << "Unable to create texture from rendered text! SDL Error: %s\n" << SDL_GetError();
-        }
-        else
-        {
-            //Get image dimensions
-            mWidth = textSurface->w;
-            mHeight = textSurface->h;
-        }
-
-        //Get rid of old surface
-        SDL_FreeSurface(textSurface);
-    }
-    else
-    {
-        cout << "Unable to render text surface! SDL_ttf Error: %s\n" << TTF_GetError();
-    }
-
-
-    //Return success
-    return mTexture != NULL;
-}
-#endif
-
-//Background
-void gBackground::render(int speedRender) {
-    //Render layer 1
-    static int scrollingOffset_layer1 = 0;
-    if (speedRender == 0) scrollingOffset_layer1 -= 0; else
-        scrollingOffset_layer1 -= 1;
-    if (scrollingOffset_layer1 <= -Layer1.getWidth())
-    {
-        scrollingOffset_layer1 = 0;
-    }
-    Layer1.render(scrollingOffset_layer1, 0);
-    Layer1.render(scrollingOffset_layer1 + Layer1.getWidth(), 0);
-
-    //Render layer 2
-    static int scrollingOffset_layer2 = 0;
-    if (speedRender == 0) scrollingOffset_layer2 -= 0; else
-        scrollingOffset_layer2 -= 2;
-    if (scrollingOffset_layer2 <= -Layer2.getWidth())
-    {
-        scrollingOffset_layer2 = 0;
-    }
-    Layer2.render(scrollingOffset_layer2, 0);
-    Layer2.render(scrollingOffset_layer2 + Layer2.getWidth(), 0);
-
-    //Render layer 3
-    static int scrollingOffset_layer3 = 0;
-    if (speedRender == 0) scrollingOffset_layer3 -= 0; else
-        scrollingOffset_layer3 -= 4;
-    if (scrollingOffset_layer3 <= -Layer3.getWidth())
-    {
-        scrollingOffset_layer3 = 0;
-    }
-    Layer3.render(scrollingOffset_layer3, 0);
-    Layer3.render(scrollingOffset_layer3 + Layer3.getWidth(), 0);
-
-    //Render layer 4
-    static int scrollingOffset_layer4 = 0;
-    scrollingOffset_layer4 -= speedRender;
-    if (scrollingOffset_layer4 <= -Layer4.getWidth())
-    {
-        scrollingOffset_layer4 = 0;
-    }
-    Layer4.render(scrollingOffset_layer4, SCREEN_HEIGHT - 205);
-    Layer4.render(scrollingOffset_layer4 + Layer4.getWidth(), SCREEN_HEIGHT - 205);
-
-
-    //Render Ground
-    static int scrollingOffset_ground = 0;
-    scrollingOffset_ground -= speedRender;
-    if (scrollingOffset_ground <= -Ground.getWidth())
-    {
-        scrollingOffset_ground = 0;
-    }
-    Ground.render(scrollingOffset_ground, SCREEN_HEIGHT - Ground.getHeight());
-    Ground.render(scrollingOffset_ground + Ground.getWidth(), SCREEN_HEIGHT - Ground.getHeight());
-
-}
-void gBackground::loadMedia(bool& success) {
-    if (!Layer1.loadFromFile("imgs/background/background_layer_1.png")) {
-        cout << "Load BG Layer1 failed! " << endl;
-        success = false;
-    }
-    if (!Layer2.loadFromFile("imgs/background/background_layer_2.png")) {
-        cout << "Load BG Layer2 failed! " << endl;
-        success = false;
-    }
-    if (!Layer3.loadFromFile("imgs/background/background_layer_3.png")) {
-        cout << "Load BG Layer3 failed! " << endl;
-        success = false;
-    }
-    if (!Layer4.loadFromFile("imgs/background/background_layer_4.png")) {
-        cout << "Load BG Layer4 failed! " << endl;
-        success = false;
-    }
-    if (!Ground.loadFromFile("imgs/background/ground.png")) {
-        cout << "Load Ground failed! " << endl;
-        success = false;
-    }
-}
-
-//Start menu
-void gStartMenu::handleEvent(SDL_Event& e) {
-    Introduce.handleEvent(&e, 110, 116, TO_DO_INTRODUCE);
-    Start.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_START);
-    Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_OPTIONS);
-    Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT_MENU);
-}
-void gStartMenu::show() {
-    GameTitleText.render(200, 150);
-    GameTitleText.render(300, 300);
-    //Render start menu box
-    StartMenuBox.render(820, (SCREEN_HEIGHT - StartMenuBox.getHeight()) / 2);
-    //Render button
-    Introduce.render(IntroduceButtonTexture, IntroduceSpriteClips);
-    Start.render(ButtonTexture, StartSpriteClips);
-    Options.render(ButtonTexture, OptionsSpriteClips);
-    Exit.render(ButtonTexture, ExitSpriteClips);
-}
-void gStartMenu::loadMedia(bool& success) {
-    if (!ButtonTexture.loadFromFile("imgs/menu/start/start_menu_button_sheet.png")) {
-        cout << "Load gStartMenu failed! " << endl;
-        success = false;
-    }
-    else
-    {
-        StartSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,320,113 };
-        StartSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,0,320,113 };
-        StartSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,0,320,113 };
-        StartSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,0,320,113 };
-        Start.setPosition(870, 210);
-
-        OptionsSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,122,320,113 };
-        OptionsSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,122,320,113 };
-        OptionsSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,122,320,113 };
-        OptionsSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,122,320,113 };
-        Options.setPosition(870, 330);
-
-        ExitSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,244,320,113 };
-        ExitSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,244,320,113 };
-        ExitSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,244,320,113 };
-        ExitSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,244,320,113 };
-        Exit.setPosition(870, 450);
-
-    }
-    if (!IntroduceButtonTexture.loadFromFile("imgs/menu/start/info_button_sheet.png")) {
-        cout << "Load IntroduceButtonTexture failed! " << endl;
-        success = false;
-    }
-    else
-    {
-        IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,110,116 };
-        IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,116,110,116 };
-        IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,232,110,116 };
-        IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,348,110,116 };
-        Introduce.setPosition(10, 10);
-    }
-    if (!StartMenuBox.loadFromFile("imgs/menu/start/startmenubox.png")) {
-        cout << "Load gStartMenu background failed! " << endl;
-        success = false;
-    }
-    GameTitleText.loadFromRenderedText("BOP!", textColor, FontBigSize);
-}
-
-//Introduce menu
-void gIntroduceMenu::loadMedia(bool& success) {
-    if (!IntroduceMenuBox.loadFromFile("imgs/menu/introduce/Introducemenubox.png")) {
-        success = false;
-        cout << "failed to load IntroduceMenuBox" << endl;
-    }
-    if (!BackTexture.loadFromFile("imgs/menu/introduce/back_button_sheet.png")) {
-        success = false;
-        cout << "failed to load IntroduceMenuBox" << endl;
-    }
-    else
-    {
-        BackSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,144,152 };
-        BackSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,156,144,154 };
-        BackSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,312,144,154 };
-        BackSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,469,144,154 };
-        Back.setPosition(200, 470);
-    }
-}
-void gIntroduceMenu::handleEvent(SDL_Event& e) {
-    Back.handleEvent(&e, 144, 154, TO_DO_BACK, true);
-}
-void gIntroduceMenu::show() {
-    IntroduceMenuBox.render((SCREEN_WIDTH - IntroduceMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - IntroduceMenuBox.getHeight()) / 2);
-    Back.render(BackTexture,BackSpriteClips);
-}
-
-//Pause menu
-void gPauseMenu::handleEvent(SDL_Event& e) {
-    ReStart.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_RESTART);
-    Resume.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_COUNTDOWN);
-    Options.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_OPTIONS);
-    Exit.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT_MENU);
-}
-void gPauseMenu::show() {
-    //Render start menu box
-    PauseMenuBox.render((SCREEN_WIDTH - PauseMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - PauseMenuBox.getHeight()) / 2);
-
-    //Render button
-    ReStart.render(ButtonTexture, ReStartSpriteClips);
-    Resume.render(ButtonTexture, ResumeSpriteClips);
-    Options.render(ButtonTexture, OptionsSpriteClips);
-    Exit.render(ButtonTexture, ExitSpriteClips);
-}
-void gPauseMenu::loadMedia(bool& success) {
-    if (!ButtonTexture.loadFromFile("imgs/menu/pause/pause_menu_button_sheet.png")) {
-        cout << "Load gPauseMenu failed! " << endl;
-        success = false;
-    }
-    else
-    {
-        ResumeSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,320,113 };
-        ResumeSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,0,320,113 };
-        ResumeSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,0,320,113 };
-        ResumeSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,0,320,113 };
-        Resume.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 160);
-
-        ReStartSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,122,320,113 };
-        ReStartSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,122,320,113 };
-        ReStartSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,122,320,113 };
-        ReStartSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,122,320,113 };
-        ReStart.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 280);
-
-        OptionsSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,241,320,113 };
-        OptionsSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,241,320,113 };
-        OptionsSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,241,320,113 };
-        OptionsSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,241,320,113 };
-        Options.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 400);
-
-        ExitSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,361,320,113 };
-        ExitSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 320,361,320,113 };
-        ExitSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 640,361,320,113 };
-        ExitSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 960,361,320,113 };
-        Exit.setPosition((SCREEN_WIDTH - BUTTON_WIDTH) / 2, 515);
-    }
-    if (!PauseMenuBox.loadFromFile("imgs/menu/pause/pausemenubox.png")) {
-        cout << "Load gPauseMenu background failed! " << endl;
-        success = false;
-    }
-}
-
-//Options menu
-void gOptionsMenu::handleEvent(SDL_Event& e) {
-    Back.handleEvent(&e, 144, 154, TO_DO_BACK, true);
-    SFX.handleEventController(&e, SFXTexture.getWidth(), SFXTexture.getHeight(), SFXstatus, TO_DO_SET_VOL_SFX);
-    BGM.handleEventController(&e, BGMTexture.getWidth(), BGMTexture.getHeight(), BGMstatus, TO_DO_SET_VOL_BGM);
-}
-void gOptionsMenu::show() {
-    //Render start menu box
-    OptionsMenuBox.render((SCREEN_WIDTH - OptionsMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - OptionsMenuBox.getHeight()) / 2);
-
-    //Render button
-    Back.render(BackTexture, BackSpriteClips);
-    SFX.renderController(SFXTexture);
-    BGM.renderController(BGMTexture);
-}
-void gOptionsMenu::setPositionX_BGM(const int& x) {
-    BGM.setPositionX(x);
-}
-void gOptionsMenu::setPositionX_SFX(const int& x) {
-    SFX.setPositionX(x);
-}
-void gOptionsMenu::loadMedia(bool& success) {
-    double savedVolumeChunk, savedVolumeMusic;
-    fstream soundSavedInfo("sound/VOLUMEINFO.txt", ios::in);
-    soundSavedInfo >> savedVolumeMusic >> savedVolumeChunk;
-    soundSavedInfo.close();
-    if (!OptionsMenuBox.loadFromFile("imgs/menu/options/optionsmenubox.png")) {
-        success = false;
-        cout << "Load OptionsMenuBox failed! " << endl;
-    }
-    if (!BGMTexture.loadFromFile("imgs/menu/options/button_bgm.png")) {
-        success = false;
-        cout << "Load BGMTexture failed! " << endl;
-    }
-    else
-    {
-        BGM.setPosition(savedVolumeMusic, 385);
-        gSound.setVolumeMusic((double(savedVolumeMusic - THRESHOLD_CONTROLER_LEFT) / (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36)) * 128);
-    }
-    if (!SFXTexture.loadFromFile("imgs/menu/options/button_sfx.png")) {
-        success = false;
-        cout << "Load SFXTexture failed! " << endl;
-    }
-    else {
-        SFX.setPosition(savedVolumeChunk, 285);
-        gSound.setVolumeChunk((double(savedVolumeChunk - THRESHOLD_CONTROLER_LEFT) / (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36)) * 128);
-    }
-    if (!BackTexture.loadFromFile("imgs/menu/options/back_button_sheet.png")) {
-        success = false;
-        cout << "Load menu_bg failed! " << endl;
-    }
-    else
-    {
-        BackSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,144,152 };
-        BackSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,156,144,154 };
-        BackSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,312,144,154 };
-        BackSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,469,144,154 };
-        Back.setPosition(320, 470);
-    }
-}
-
-//Ingame menu
-gIngameMenu::gIngameMenu() {
-    isPauseOn = true;
-    isSoundOn = true;
-    isOptionsOn = false;
-};
-void gIngameMenu::handleEvent(SDL_Event& e) {
-    Pause.handleEventSwitch(&e, 70, 70, isPauseOn, (gameStatus == GAME_STATUS_LOSE ? TO_DO_BACK_HOME : (isPauseOn == true ? TO_DO_PAUSE : TO_DO_RESUME)));
-    Home.handleEventSwitch(&e, 70, 70, isOptionsOn, TO_DO_BACK_HOME);
-    Sound.handleEventSwitch(&e, 70, 70, isSoundOn, (isSoundOn == true ? TO_DO_TURN_OFF_SOUND : TO_DO_TURN_ON_SOUND));
-}
-void gIngameMenu::show() {
-    //Render button
-    Pause.renderSwitch(PauseTexture, PauseSpriteClips);
-    Home.renderSwitch(OptionsTexture, OptionsSpriteClips);
-    Sound.renderSwitch(SoundTexture, SoundSpriteClips);
-}
-void gIngameMenu::loadMedia(bool& success) {
-    if (!PauseTexture.loadFromFile("imgs/menu/ingame_menu/pause_onclick.png")) {
-        success = false;
-        cout << "Load switch failed! " << endl;
-    }
-    else
-    {
-        PauseSpriteClips[SWITCH_SPRITE_MOUSE_ON] = { 0,0,65,65 };
-        PauseSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
-        Pause.setPosition(30, 10);
-    }
-    if (!OptionsTexture.loadFromFile("imgs/menu/ingame_menu/home_onclick.png")) {
-        success = false;
-        cout << "Load switch failed! " << endl;
-    }
-    else
-    {
-        OptionsSpriteClips[SWITCH_SPRITE_MOUSE_ON] = { 0,0,65,65 };
-        OptionsSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
-        Home.setPosition(115, 10);
-    }
-    if (!SoundTexture.loadFromFile("imgs/menu/ingame_menu/sound_onclick.png")) {
-        success = false;
-        cout << "Load switch failed! " << endl;
-    }
-    else
-    {
-        SoundSpriteClips[SWITCH_SPRITE_MOUSE_ON] = { 0,0,65,65 };
-        SoundSpriteClips[SWITCH_SPRITE_MOUSE_OFF] = { 65,0,65,65 };
-        Sound.setPosition(200, 10);
-    }
-}
-
-//Lose menu
-void gLoseMenu::handleEvent(SDL_Event& e) {
-    reStart.handleEvent(&e, 144, 154, TO_DO_RESTART);
-    if (e.type == SDL_KEYDOWN)
-        if (e.key.keysym.sym == SDLK_SPACE && e.key.repeat == 0) {
-            handle(TO_DO_RESTART);
-        }
-}
-void gLoseMenu::show() {
-
-    if (SCORE.isHighScore()) tempTexture.loadFromRenderedText("HIGH SCORE", textColor, Font);
-    else {
-        tempTexture.loadFromRenderedText("YOUR SCORE", textColor, Font);
-    }
-    timeText.str("");
-
-    timeText << SCORE.getScore();
-    yourScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, FontMedSize);
-    loseMenuBox.render((SCREEN_WIDTH - loseMenuBox.getWidth()) / 2, 60);
-    if (SCORE.getScore() < 100) {
-        fisrtStar[OFF_STAR].render(512, 210);
-        secondStar[OFF_STAR].render(602, 190);
-        thirdStar[OFF_STAR].render(702, 210);
-    }
-    if (SCORE.getScore() >= 100 && SCORE.getScore() < 200) {
-        fisrtStar[ON_STAR].render(512, 210);
-        secondStar[OFF_STAR].render(602, 190);
-        thirdStar[OFF_STAR].render(702, 210);
-    }
-    if (SCORE.getScore() >= 200 && SCORE.getScore() < 400) {
-        fisrtStar[ON_STAR].render(512, 210);
-        secondStar[ON_STAR].render(602, 190);
-        thirdStar[OFF_STAR].render(702, 210);
-    }
-    if (SCORE.getScore() >= 400) {
-        fisrtStar[ON_STAR].render(512, 210);
-        secondStar[ON_STAR].render(602, 190);
-        thirdStar[ON_STAR].render(702, 210);
-    }
-
-    tempTexture.render((SCREEN_WIDTH - tempTexture.getWidth()) / 2, 290);
-    yourScoreTexture.render((SCREEN_WIDTH - yourScoreTexture.getWidth()) / 2, 350);
-    reStart.render(reStartTexture, reStartSpriteClips);
-}
-void gLoseMenu::loadMedia(bool& success) {
-    if (!loseMenuBox.loadFromFile("imgs/menu/lose/gameoverbox.png")) {
-        cout << "failed to load loseTexture" << endl;
-        success = false;
-    }
-    if (!fisrtStar[OFF_STAR].loadFromFile("imgs/menu/lose/1_OFF.png")) {
-        success = false;
-        cout << "load firstStar failed" << endl;
-    }
-    if (!fisrtStar[ON_STAR].loadFromFile("imgs/menu/lose/1_ON.png")) {
-        success = false;
-        cout << "load firstStar failed" << endl;
-    }
-    if (!secondStar[OFF_STAR].loadFromFile("imgs/menu/lose/2_OFF.png")) {
-        success = false;
-        cout << "load secondStar failed" << endl;
-    }
-    if (!secondStar[ON_STAR].loadFromFile("imgs/menu/lose/2_ON.png")) {
-        success = false;
-        cout << "load secondStar failed" << endl;
-    }
-    if (!thirdStar[OFF_STAR].loadFromFile("imgs/menu/lose/3_OFF.png")) {
-        success = false;
-        cout << "load thirdStar failed" << endl;
-    }
-    if (!thirdStar[ON_STAR].loadFromFile("imgs/menu/lose/3_ON.png")) {
-        success = false;
-        cout << "load thirdStar failed" << endl;
-    }
-    if (!reStartTexture.loadFromFile("imgs/menu/lose/restart.png")) {
-        success = false;
-        cout << "load reStartTexture failed" << endl;
-    }
-    else
-    {
-        reStartSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,144,154 };
-        reStartSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,154,144,154 };
-        reStartSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,308,144,154 };
-        reStartSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,462,144,154 };
-        reStart.setPosition(568, 450);
-
-    }
-}
-
-//Exit menu
-void gExitMenu::handleEvent(SDL_Event& e) {
-    Yes.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_EXIT);
-    No.handleEvent(&e, BUTTON_WIDTH, BUTTON_HEIGHT, TO_DO_BACK, true);
-}
-void gExitMenu::show() {
-
-    //Render start menu box
-    ExitMenuBox.render((SCREEN_WIDTH - ExitMenuBox.getWidth()) / 2, (SCREEN_HEIGHT - ExitMenuBox.getHeight()) / 2);
-
-    //Render button
-    Yes.render(ButtonTexture, YesSpriteClips);
-    No.render(ButtonTexture, NoSpriteClips);
-}
-void gExitMenu::loadMedia(bool& success) {
-    if (!ExitMenuBox.loadFromFile("imgs/menu/exit/exitmenubox.png")) {
-        success = false;
-        cout << "load ExitMenuBox failed" << endl;
-    }
-    if (!ButtonTexture.loadFromFile("imgs/menu/exit/Exit_menu_button_sheet.png")) {
-        success = false;
-        cout << "load buttonTexture Exitmenu failed" << endl;
-    }
-    else
-    {
-        NoSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 0,0,144,154 };
-        NoSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,154,144,154 };
-        NoSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,308,144,154 };
-        NoSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,462,144,154 };
-        No.setPosition(410, 450);
-
-        YesSpriteClips[BUTTON_SPRITE_MOUSE_OUT] = { 156,0,144,154 };
-        YesSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 156,154,144,154 };
-        YesSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 156,308,144,154 };
-        YesSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 156,462,144,154 };
-        Yes.setPosition(725, 450);
-    }
-}
-
-//Button
-LButton::LButton()
-{
-    mPosition.x = 0;
-    mPosition.y = 0;
-
-    mCurrentSprite = BUTTON_SPRITE_MOUSE_OUT;
-}
-void LButton::setPosition(int x, int y)
-{
-    mPosition.x = x;
-    mPosition.y = y;
-}
-void LButton::handleEvent(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT,const TO_DO &todo, bool isBack)
-{
-    //If mouse event happened
-    if (e->type == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP)
-    {
-        //Get mouse position
-        int x, y;
-        SDL_GetMouseState(&x, &y);
-
-        //Check if mouse is in button
-        bool inside = true;
-
-        //Mouse is left of the button
-        if (x < mPosition.x)
-        {
-            inside = false;
-        }
-        //Mouse is right of the button
-        else if (x > mPosition.x + BUTTON_WIDTH)
-        {
-            inside = false;
-        }
-        //Mouse above the button
-        else if (y < mPosition.y)
-        {
-            inside = false;
-        }
-        //Mouse below the button
-        else if (y > mPosition.y + BUTTON_HEIGHT)
-        {
-            inside = false;
-        }
-
-        //Mouse is outside button
-        if (!inside)
-        {
-            mCurrentSprite = BUTTON_SPRITE_MOUSE_OUT;
-        }
-        //Mouse is inside button
-        else
-        {
-            //Set mouse over sprite
-            switch (e->type)
-            {
-                case SDL_MOUSEMOTION:
-                    mCurrentSprite = BUTTON_SPRITE_MOUSE_OVER_MOTION;
-                    break;
-                case SDL_MOUSEBUTTONDOWN:
-                    mCurrentSprite = BUTTON_SPRITE_MOUSE_DOWN;
-                    if(!isBack) menuPre = menuStatus;
-                    break;
-                case SDL_MOUSEBUTTONUP:
-                    mCurrentSprite = BUTTON_SPRITE_MOUSE_UP;
-                    if (isBack) {
-                        menuStatus = menuPre;
-                    }
-                    else
-                    {
-                        handle(todo);
-                    }
-                    break;
-            }
-
-        }
-    }
-}
-void LButton::handleEventController(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, ControllerStatus& status, const TO_DO& todo)
-{
-    if (e->type == SDL_MOUSEBUTTONDOWN) {
-        int x, y;
-        SDL_GetMouseState(&x, &y);
-
-        //Check if mouse is in button
-        bool inside = true;
-
-        //Mouse is left of the button
-        if (x < mPosition.x)
-        {
-            inside = false;
-        }
-        //Mouse is right of the button
-        else if (x > mPosition.x + BUTTON_WIDTH)
-        {
-            inside = false;
-        }
-        //Mouse above the button
-        else if (y < mPosition.y)
-        {
-            inside = false;
-        }
-        //Mouse below the button
-        else if (y > mPosition.y + BUTTON_HEIGHT)
-        {
-            inside = false;
-        }
-
-        if (inside) {
-            status.isClick = true;
-            status.x_len = x - mPosition.x;
-            status.y_len = y - mPosition.y;
-        };
-        //Mouse is outside button
-    }
-    if (e->type == SDL_MOUSEMOTION && status.isClick) {
-        int x, y;
-        SDL_GetMouseState(&x, &y);
-        mPosition.x = x - status.x_len;
-        if (mPosition.x < THRESHOLD_CONTROLER_LEFT) mPosition.x = THRESHOLD_CONTROLER_LEFT;
-        if (mPosition.x + BUTTON_WIDTH > THRESHOLD_CONTROLER_RIGHT) mPosition.x = THRESHOLD_CONTROLER_RIGHT - BUTTON_WIDTH;
-        handle(todo, (double(mPosition.x - THRESHOLD_CONTROLER_LEFT) / (THRESHOLD_CONTROLER_RIGHT - 36 - THRESHOLD_CONTROLER_LEFT))*MIX_MAX_VOLUME);
-
-    }
-    if (e->type == SDL_MOUSEBUTTONUP) {
-        status.isClick = false;
-    }
-}
-void LButton::handleEventSwitch(SDL_Event* e, const int& BUTTON_WIDTH, const int& BUTTON_HEIGHT, bool& isOn, const TO_DO& todo) {
-    if (e->type == SDL_MOUSEBUTTONDOWN) {
-        int x, y;
-        SDL_GetMouseState(&x, &y);
-        //Check if mouse is in button
-        bool inside = true;
-
-        //Mouse is left of the button
-        if (x < mPosition.x)
-        {
-            inside = false;
-        }
-        //Mouse is right of the button
-        else if (x > mPosition.x + BUTTON_WIDTH)
-        {
-            inside = false;
-        }
-        //Mouse above the button
-        else if (y < mPosition.y)
-        {
-            inside = false;
-        }
-        //Mouse below the button
-        else if (y > mPosition.y + BUTTON_HEIGHT)
-        {
-            inside = false;
-        }
-        if (inside) {
-            handle(todo);
-        }
-
-    }
-    switch (isOn)
-    {
-    case true:
-        mSwitchCurrentSprite = SWITCH_SPRITE_MOUSE_ON;
-        break;
-    case false:
-        mSwitchCurrentSprite = SWITCH_SPRITE_MOUSE_OFF;
-        break;
-    }
-
-}
-void LButton::renderController(LTexture& gButtonSpriteSheetTexture)
-{
-    //Show current button sprite
-    gButtonSpriteSheetTexture.render(mPosition.x, mPosition.y);
-}
-void LButton::renderSwitch(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[]) {
-    gButtonSpriteSheetTexture.render(mPosition.x, mPosition.y, &SpriteClips[mSwitchCurrentSprite]);
-}
-void LButton::render(LTexture& gButtonSpriteSheetTexture, SDL_Rect SpriteClips[])
-{
-    //Show current button sprite
-    gButtonSpriteSheetTexture.render(mPosition.x, mPosition.y, &SpriteClips[mCurrentSprite]);
-}
-void LButton::setPositionX(const int& x) {
-    mPosition.x = x;
-}
-//Timer
-LTimer::LTimer()
-{
-    //Initialize the variables
-    mStartTicks = 0;
-    mPausedTicks = 0;
-
-    mPaused = false;
-    mStarted = false;
-}
-void LTimer::start()
-{
-    //Start the timer
-    mStarted = true;
-
-    //Unpause the timer
-    mPaused = false;
-
-    //Get the current clock time
-    mStartTicks = SDL_GetTicks();
-    mPausedTicks = 0;
-}
-void LTimer::stop()
-{
-    //Stop the timer
-    mStarted = false;
-
-    //Unpause the timer
-    mPaused = false;
-
-    //Clear tick variables
-    mStartTicks = 0;
-    mPausedTicks = 0;
-}
-void LTimer::pause()
-{
-    //If the timer is running and isn't already paused
-    if (mStarted && !mPaused)
-    {
-        //Pause the timer
-        mPaused = true;
-
-        //Calculate the paused ticks
-        mPausedTicks = SDL_GetTicks() - mStartTicks;
-        mStartTicks = 0;
-    }
-}
-void LTimer::unpause()
-{
-    //If the timer is running and paused
-    if (mStarted && mPaused)
-    {
-        //Unpause the timer
-        mPaused = false;
-
-        //Reset the starting ticks
-        mStartTicks = SDL_GetTicks() - mPausedTicks;
-
-        //Reset the paused ticks
-        mPausedTicks = 0;
-    }
-}
-Uint32 LTimer::getTicks()
-{
-    //The actual timer time
-    Uint32 time = 0;
-
-    //If the timer is running
-    if (mStarted)
-    {
-        //If the timer is paused
-        if (mPaused)
-        {
-            //Return the number of ticks when the timer was paused
-            time = mPausedTicks;
-        }
-        else
-        {
-            //Return the current time minus the start time
-            time = SDL_GetTicks() - mStartTicks;
-        }
-    }
-
-    return time;
-}
-bool LTimer::isStarted()
-{
-    //Timer is running and paused or unpaused
-    return mStarted;
-}
-bool LTimer::isPaused()
-{
-    //Timer is running and paused
-    return mPaused && mStarted;
-}
-
-//Game sound
-void LSound::free() {
-    //Free the sound effects
-    Mix_FreeChunk(gLoseSound);
-    Mix_FreeChunk(gGainSound);
-    Mix_FreeChunk(gPassSound);
-    Mix_FreeChunk(gJumpSound);
-    gLoseSound = NULL;
-    gGainSound = NULL;
-    gPassSound = NULL;
-    gJumpSound = NULL;
-
-    //Free the music
-    Mix_FreeMusic(gBgm);
-    gBgm = NULL;
-}
-LSound::~LSound() {
-    free();
-}
-bool LSound::isPlayingMusic() {
-    return Mix_PlayingMusic();
-}
-bool LSound::isPausedMusic() {
-    return Mix_PausedMusic();
-}
-void LSound::StopMusic() {
-    Mix_HaltMusic();
-}
-void LSound::PlayMusic() {
-    if (!isPlayingMusic())
-        Mix_PlayMusic(gBgm, -1);
-    Mix_VolumeMusic(volumeMusic);
-}
-void LSound::PauseMusic() {
-    if (isPlayingMusic())
-        Mix_PauseMusic();
-}
-void LSound::ResumeMusic() {
-    if (isPausedMusic())
-        Mix_ResumeMusic();
-}
-void LSound::PlayJumpSound() {
-    Mix_PlayChannel(-1, gJumpSound, 0);
-    Mix_VolumeChunk(gJumpSound, volumeChunk);
-}
-void LSound::PlayLoseSound() {
-    Mix_PlayChannel(-1, gLoseSound, 0);
-    Mix_VolumeChunk(gLoseSound, volumeChunk);
-}
-void LSound::PlayGainSound() {
-    Mix_PlayChannel(-1, gGainSound, 0);
-    Mix_VolumeChunk(gGainSound, volumeChunk);
-}
-void LSound::PlayPassSound() {
-    Mix_PlayChannel(-1, gPassSound, 0);
-    Mix_VolumeChunk(gPassSound, volumeChunk);
-}
-void LSound::setVolumeMusic(const int& v) {
-    volumeMusic = v;
-    Mix_VolumeMusic(volumeMusic);
-}
-void LSound::setVolumeChunk(const int& v) {
-    volumeChunk = v;
-    Mix_VolumeChunk(gJumpSound, volumeChunk);
-    Mix_VolumeChunk(gLoseSound, volumeChunk);
-    Mix_VolumeChunk(gPassSound, volumeChunk);
-    Mix_VolumeChunk(gGainSound, volumeChunk);
-}
-void LSound::loadMedia(bool& success) {
-    gBgm = Mix_LoadMUS("sound/bgm.wav");
-    if (!gBgm) {
-        cout << "Failed to load bgm" << Mix_GetError() << endl;
-        success = false;
-    }
-    gJumpSound = Mix_LoadWAV("sound/jumpsound.wav");
-    if (!gJumpSound) {
-        cout << "Failed to load jumpsound1" << Mix_GetError() << endl;
-        success = false;
-    }
-    gPassSound = Mix_LoadWAV("sound/passsound.wav");
-    if (!gPassSound) {
-        cout << "Failed to load gPassSound" << Mix_GetError() << endl;
-        success = false;
-    }
-    gLoseSound = Mix_LoadWAV("sound/losesound.wav");
-    if (!gLoseSound) {
-        cout << "Failed to load losesound" << Mix_GetError() << endl;
-        success = false;
-    }
-    gGainSound = Mix_LoadWAV("sound/gainsound.wav");
-    if (!gGainSound) {
-        cout << "Failed to load gGainSound" << Mix_GetError() << endl;
-        success = false;
-    }
-}
-void LSound::turnOffSound() {
-    savedVolumeMusic = volumeMusic;
-    savedVolumeChunk = volumeChunk;
-    volumeChunk = volumeMusic = 0;
-    setVolumeChunk(volumeChunk);
-    setVolumeMusic(volumeMusic);
-}
-void LSound::turnOnSound() {
-    volumeMusic = savedVolumeMusic;
-    volumeChunk = savedVolumeChunk;
-    setVolumeChunk(volumeChunk);
-    setVolumeMusic(volumeMusic);
-}
-int LSound::getVolumeMusic() const {
-    return volumeMusic;
-}
-int LSound::getVolumeChunk() const {
-    return volumeChunk;
-}
-//Score
-void LScore::loadMedia(bool& success) {
-    Uint32 savedScore;
-    fstream savedScoreInfo("score.txt", ios::in);
-    if (!savedScoreInfo.is_open()) {
-        success = false;
-    }
-    else
-    {
-        savedScoreInfo >> savedScore;
-        setScoreFromSaved(savedScore);
-        savedScoreInfo.close();
-    }
-}
-void LScore::addScore(const Uint32& sc) {
-    scoreAdded += sc;
-}
-void LScore::stop() {
-    if (gTimer.isStarted()) gTimer.stop();
-}
-void LScore::updateHighScore() {
-    timeText.str("");
-    if (score > savedScore) {
-        isHighSc = true;
-        savedScore = score;
-        timeText << "HI: " << savedScore;
-        if (!gHighScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, Font)) {
-            cout << "Unable to render savedtime texture!" << endl;
-        }
-    }
-    else if (score < savedScore) isHighSc = false;
-}
-void LScore::setScoreFromSaved(const Uint32& sc) {
-    savedScore = sc;
-    timeText << "HI: " << savedScore;
-    if (!gHighScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, Font)) {
-        cout << "Unable to render savedtime texture!" << endl;
-    }
-}
-void LScore::process() {
-    timeText.str("");
-    shiftScore();
-    timeText << score - startTime;
-}
-void LScore::pause() {
-    if (!gTimer.isPaused()) gTimer.pause();
-}
-void LScore::start() {
-    scoreAdded = 0;
-    if (!gTimer.isStarted()) gTimer.start();
-}
-void LScore::reStart() {
-    scoreAdded = 0;
-    if (gTimer.isStarted()) gTimer.start();
-}
-void LScore::render() {
-    if (!gCurrentScoreTexture.loadFromRenderedText(timeText.str().c_str(), textColor, Font)) {
-        cout << "Unable to render time texture!" << endl;
-    }
-    else {
-        gCurrentScoreTexture.render(SCREEN_WIDTH - gCurrentScoreTexture.getWidth() - 50, 10);
-        gHighScoreTexture.render((SCREEN_WIDTH - gHighScoreTexture.getWidth())/2, 10);
-    }
-} 
-void LScore::shiftScore() {
-    score = scoreAdded+gTimer.getTicks() / 250;
-}
-void LScore::resume() {
-    if (gTimer.isPaused()) gTimer.unpause();
-}
-bool LScore::isStarted() {
-    return gTimer.isStarted();
-}
-bool LScore::isHighScore() {
-    return isHighSc;
-}
-Uint32 LScore::getHighScore() const{
-    return savedScore;
-}
-int LScore::getScore(){
-    shiftScore();
-    return score;
-}
-
-//CountDown
-LCountDown::LCountDown() {
-    init();
-}
-void LCountDown::init() {
-    count = 3;
-    isEnd = false;
-    timer.start();
-    timeText.str("");
-}
-void LCountDown::render() {
-    textCountDown.render((SCREEN_WIDTH - textCountDown.getWidth()) / 2, (SCREEN_HEIGHT - textCountDown.getHeight()) / 2);
-}
-void LCountDown::show() {
-    timeText.str("");
-    if (!isEnd) {
-        if (timer.getTicks() / 400 == 1) {
-            if (count == -1) {
-                isEnd = true;
-                timer.stop();
-                timeText.str("");
-                textCountDown.free();
-            }
-            else
-            {
-                if (count == 0) {
-                    timeText << "GO!";
-                    timer.start();
-                    --count;
-                }
-                else {
-                    timeText << count;
-                    timer.start();
-                    --count;
-                }
-                if (!textCountDown.loadFromRenderedText(timeText.str(), textColor, FontBigSize)) {
-                    cout << "Failed to load text" << endl;
-                }
-            }
-        }
-    }
-    //Render textures
-    render();
-}
-bool LCountDown::isEndCountDown() {
-    return isEnd;
 }
 
 //Otter
@@ -2257,8 +660,9 @@ gCharacter::gCharacter() {
     mPosX = 150;
     mPosY = GROUND - RUN_SHEET_HEIGHT;
     mVelY = 0;
+    
+    action = CHARACTER_ACTION_RUN;
 
-    status = 0;
     isFall = false;
     mColliders = {
         {112,96,32,4},
@@ -2373,10 +777,10 @@ void gCharacter::show(SDL_Renderer* gRenderer) {
         if (count_idle / 10 > IDLE_FRAME_SIZE) {
             count_idle = 0;
         }
-        idle.render(mPosX, mPosY, currentClip);
+        idle.render(gRenderer, mPosX, mPosY, currentClip);
     }
     else {
-        if (status == RUN) {
+        if (action == CHARACTER_ACTION_RUN) {
             runPresentFrame = count_run / 7;
             if (gameStatus == GAME_STATUS_PLAYING) count_run++;
             SDL_Rect* currentClip = &spriteClip_run[runPresentFrame];
@@ -2384,10 +788,10 @@ void gCharacter::show(SDL_Renderer* gRenderer) {
             if (count_run / 7 > RUN_FRAME_SIZE) {
                 count_run = 0;
             }
-            run.render(mPosX, mPosY, currentClip);
+            run.render(gRenderer, mPosX, mPosY, currentClip);
         }
 
-        if (status == JUMP) {
+        if (action == CHARACTER_ACTION_JUMP) {
             jumpPresentFrame = count_jump / 20;
             if (gameStatus == GAME_STATUS_PLAYING) count_jump++;
             SDL_Rect* currentClip = &spriteClip_jump[jumpPresentFrame];
@@ -2395,10 +799,10 @@ void gCharacter::show(SDL_Renderer* gRenderer) {
             if (count_jump / 20 > JUMP_FRAME_SIZE) {
                 count_jump = 0;
             }
-            jump.render(mPosX, mPosY, currentClip);
+            jump.render(gRenderer, mPosX, mPosY, currentClip);
         }
 
-        if (status == FALL) {
+        if (action == CHARACTER_ACTION_FALL) {
             fallPresentFrame = count_fall / 7;
             if (gameStatus == GAME_STATUS_PLAYING) count_fall++;
             SDL_Rect* currentClip = &spriteClip_fall[fallPresentFrame];
@@ -2406,10 +810,10 @@ void gCharacter::show(SDL_Renderer* gRenderer) {
             if (count_fall / 7 > FALL_FRAME_SIZE) {
                 count_fall = 0;
             }
-            fall.render(mPosX, mPosY, currentClip);
+            fall.render(gRenderer, mPosX, mPosY, currentClip);
         }
 
-        if (status == FASTLANDING) {
+        if (action == CHARACTER_ACTION_FASTLANDING) {
             fastlandingPresentFrame = count_fastlanding / 8;
             if (gameStatus == GAME_STATUS_PLAYING) count_fastlanding++;
             SDL_Rect* currentClip = &spriteClip_fall[fastlandingPresentFrame];
@@ -2417,7 +821,7 @@ void gCharacter::show(SDL_Renderer* gRenderer) {
             if (count_fastlanding / 8 > FASTLANDING_FRAME_SIZE) {
                 count_fastlanding = 0;
             }
-            fall.render(mPosX, mPosY, currentClip);
+            fall.render(gRenderer, mPosX, mPosY, currentClip);
         }
         move();
     }
@@ -2427,8 +831,8 @@ void gCharacter::handleEvent(SDL_Event& e) {
     if (e.type == SDL_KEYDOWN && e.key.repeat == 0)
     {
         if (e.key.keysym.sym == SDLK_UP || e.key.keysym.sym == SDLK_SPACE) {
-            if (status == RUN) {
-                status = JUMP;
+            if (action == CHARACTER_ACTION_RUN) {
+                action = CHARACTER_ACTION_JUMP;
                 mPosY = GROUND - JUMP_SHEET_HEIGHT;
                 count_jump = 0;
                 timeJump.start();
@@ -2436,9 +840,9 @@ void gCharacter::handleEvent(SDL_Event& e) {
             }
         }
         if (e.key.keysym.sym == SDLK_DOWN) {
-            if (status != RUN) {
+            if (action != CHARACTER_ACTION_RUN) {
                 mVelY = 18;
-                status = FASTLANDING;
+                action = CHARACTER_ACTION_FASTLANDING;
                 count_fastlanding = 0;
             }
         }
@@ -2450,7 +854,7 @@ void gCharacter::move()
 
     shiftColliders();
     //Fast landing
-    if (status == FASTLANDING) {
+    if (action == CHARACTER_ACTION_FASTLANDING) {
         mPosY += 45;
         shiftColliders();
         if (mPosY > GROUND - FALL_SHEET_HEIGHT)
@@ -2458,12 +862,12 @@ void gCharacter::move()
             //Move back
             mPosY = GROUND - RUN_SHEET_HEIGHT;
             shiftColliders();
-            status = RUN;
+            action = CHARACTER_ACTION_RUN;
             isFall = false;
         }
     }
 
-    if (status == JUMP && mPosY >= JUMP_MAX) {
+    if (action == CHARACTER_ACTION_JUMP && mPosY >= JUMP_MAX) {
         mVelY = 245;
         double deltaTime = timeJump.getTicks() / 1000.f;
         mPosY += -(mVelY * (deltaTime)-0.5 * 40 * (deltaTime * deltaTime));
@@ -2471,12 +875,12 @@ void gCharacter::move()
     }
     else if (mPosY <= JUMP_MAX && isFall == false) {
         count_fall = 0;
-        status = FALL;
+        action = CHARACTER_ACTION_FALL;
         //timeJump.stop();
         timeJump.start();
         isFall = true;
     }
-    if (status == FALL) {
+    if (action == CHARACTER_ACTION_FALL) {
         if (mPosY <= GROUND - FALL_SHEET_HEIGHT) {
             mVelY = 85;
             double deltaTime = timeJump.getTicks() / 1000.f;
@@ -2486,14 +890,14 @@ void gCharacter::move()
         else {
             mPosY = GROUND - RUN_SHEET_HEIGHT;
             shiftColliders();
-            status = RUN;
+            action = CHARACTER_ACTION_RUN;
             timeJump.stop();
             isFall = false;
         }
     }
 }
 void gCharacter::loadMedia(bool& success) {
-    if (!run.loadFromFile("imgs/characters/Otter/Run.png")) {
+    if (!run.loadFromFile("imgs/characters/Otter/Run.png", gRenderer)) {
         cout << "Load Otter run failed!" << endl;
         success = false;
     }
@@ -2506,7 +910,7 @@ void gCharacter::loadMedia(bool& success) {
             {400,0,200,160}
         };
     }
-    if (!jump.loadFromFile("imgs/characters/Otter/Jump.png")) {
+    if (!jump.loadFromFile("imgs/characters/Otter/Jump.png", gRenderer)) {
         cout << "Load Otter jump failed!" << endl;
         success = false;
     }
@@ -2519,7 +923,7 @@ void gCharacter::loadMedia(bool& success) {
             //{400,0,200,160}
         };
     }
-    if (!fall.loadFromFile("imgs/characters/Otter/land.png")) {
+    if (!fall.loadFromFile("imgs/characters/Otter/land.png", gRenderer)) {
         cout << "Load Otter land failed!" << endl;
         success = false;
     }
@@ -2532,7 +936,7 @@ void gCharacter::loadMedia(bool& success) {
             //{400,0,200,160}
         };
     }
-    if (!idle.loadFromFile("imgs/characters/Otter/idle.png")) {
+    if (!idle.loadFromFile("imgs/characters/Otter/idle.png", gRenderer)) {
         cout << "Load Otter idle failed!" << endl;
         success = false;
     }
@@ -2560,15 +964,15 @@ void gCharacter::loadMedia(bool& success) {
 }
 vector <SDL_Rect>& gCharacter::getColliders()
 {
-    switch (status)
+    switch (action)
     {
-    case JUMP:
+    case CHARACTER_ACTION_JUMP:
         return mCollidersJump[jumpPresentFrame];
         break;
-    case FALL:
+    case CHARACTER_ACTION_FALL:
         return mCollidersFall[fallPresentFrame];
         break;
-    case FASTLANDING:
+    case CHARACTER_ACTION_FASTLANDING:
         return mCollidersFastLanding[fastlandingPresentFrame];
         break;
     default:
@@ -2577,7 +981,7 @@ vector <SDL_Rect>& gCharacter::getColliders()
     }
 }
 int gCharacter::getStatus() {
-    return status;
+    return action;
 }
 
 //Obstacle and item
@@ -2627,7 +1031,7 @@ void ObstacleAndItem::move() {
     shiftColliders(mColliders);
 }
 void ObstacleAndItem::render() {
-    character->render(mPosX, mPosY);
+    character->render(gRenderer, mPosX, mPosY);
     move();
 }
 void ObstacleAndItem::show() {
@@ -2635,7 +1039,7 @@ void ObstacleAndItem::show() {
         frame = 0;
     }
     mCurrentClips = &mSpritesClips[frame / 7];
-    character->render(mPosX, mPosY, mCurrentClips);
+    character->render(gRenderer, mPosX, mPosY, mCurrentClips);
     move();
 }
 void ObstacleAndItem::shiftColliders(vector <SDL_Rect>& Colliders)
@@ -2806,7 +1210,7 @@ void loadRandomList(bool& success) {
     randomListCoin.resize(5);
     randomListGems.resize(3);
     //Shroom enemy mShroom
-    if (!mShroom_big.loadFromFile("imgs/obstacle/shroom_big.png")) {
+    if (!mShroom_big.loadFromFile("imgs/obstacle/shroom_big.png", gRenderer)) {
         cout << "Load shroom big enemy failed!" << endl;
         success = false;
     }
@@ -2830,7 +1234,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListObstacles[SHROOM_BIG] = buffer;
     }
-    if (!mShroom_medium.loadFromFile("imgs/obstacle/shroom_medium.png")) {
+    if (!mShroom_medium.loadFromFile("imgs/obstacle/shroom_medium.png", gRenderer)) {
         cout << "Load shroom small enemy failed!" << endl;
         success = false;
     }
@@ -2854,7 +1258,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListObstacles[SHROOM_MEDIUM] = buffer;
     }
-    if (!mShroom_small.loadFromFile("imgs/obstacle/shroom_small.png")) {
+    if (!mShroom_small.loadFromFile("imgs/obstacle/shroom_small.png", gRenderer)) {
         cout << "Load shroom small enemy failed!" << endl;
         success = false;
     }
@@ -2880,7 +1284,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListObstacles[SHROOM_SMALL] = buffer;
     }
-    if (!mPlantRed_big.loadFromFile("imgs/obstacle/plantred_big.png")) {
+    if (!mPlantRed_big.loadFromFile("imgs/obstacle/plantred_big.png", gRenderer)) {
         cout << "Load plantred enemy failed!" << endl;
         success = false;
     }
@@ -2911,7 +1315,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListObstacles[PLANTRED_BIG] = buffer;
     }
-    if (!mPlantRed_medium.loadFromFile("imgs/obstacle/plantred_medium.png")) {
+    if (!mPlantRed_medium.loadFromFile("imgs/obstacle/plantred_medium.png", gRenderer)) {
         cout << "Load plantred enemy failed!" << endl;
         success = false;
     }
@@ -2941,7 +1345,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListObstacles[PLANTRED_MEDIUM] = buffer;
     }
-    if (!mPlantRed_small.loadFromFile("imgs/obstacle/plantred_small.png")) {
+    if (!mPlantRed_small.loadFromFile("imgs/obstacle/plantred_small.png", gRenderer)) {
         cout << "Load plantred enemy failed!" << endl;
         success = false;
     }
@@ -2974,7 +1378,7 @@ void loadRandomList(bool& success) {
         randomListObstacles[PLANTRED_SMALL] = buffer;
     }
 
-    if (!mPlantViolet_big.loadFromFile("imgs/obstacle/plantviolet_big.png")) {
+    if (!mPlantViolet_big.loadFromFile("imgs/obstacle/plantviolet_big.png", gRenderer)) {
         cout << "Load plantviolet enemy failed!" << endl;
         success = false;
     }
@@ -2998,7 +1402,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListObstacles[PLANTVIOLET_BIG] = buffer;
     }
-    if (!mPlantViolet_medium.loadFromFile("imgs/obstacle/plantviolet_medium.png")) {
+    if (!mPlantViolet_medium.loadFromFile("imgs/obstacle/plantviolet_medium.png", gRenderer)) {
         cout << "Load plantviolet enemy failed!" << endl;
         success = false;
     }
@@ -3022,7 +1426,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListObstacles[PLANTVIOLET_MEDIUM] = buffer;
     }
-    if (!mPlantViolet_small.loadFromFile("imgs/obstacle/plantviolet_small.png")) {
+    if (!mPlantViolet_small.loadFromFile("imgs/obstacle/plantviolet_small.png", gRenderer)) {
         cout << "Load plantviolet enemy failed!" << endl;
         success = false;
     }
@@ -3043,7 +1447,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListObstacles[PLANTVIOLET_SMALL] = buffer;
     }
-    if (!mMaleBee.loadFromFile("imgs/obstacle/malebee.png")) {
+    if (!mMaleBee.loadFromFile("imgs/obstacle/malebee.png", gRenderer)) {
         cout << "Load mGogleEyesBee enemy failed!" << endl;
         success = false;
     }
@@ -3061,7 +1465,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListObstacles[BEE_MALE] = buffer;
     }
-    if (!mFemaleBee.loadFromFile("imgs/obstacle/femalebee.png")) {
+    if (!mFemaleBee.loadFromFile("imgs/obstacle/femalebee.png", gRenderer)) {
         cout << "Load mGogleEyesBee enemy failed!" << endl;
         success = false;
     }
@@ -3081,7 +1485,7 @@ void loadRandomList(bool& success) {
     }
 
     //Coin
-    if (!mCoinAma.loadFromFile("imgs/coingems/CoinAma.png")) {
+    if (!mCoinAma.loadFromFile("imgs/coingems/CoinAma.png", gRenderer)) {
         success = false;
         cout << "" << endl;
     }
@@ -3102,7 +1506,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListCoin[COIN_AMA] = buffer;
     }
-    if (!mCoinAzu.loadFromFile("imgs/coingems/CoinAzu.png")) {
+    if (!mCoinAzu.loadFromFile("imgs/coingems/CoinAzu.png", gRenderer)) {
         success = false;
         cout << "" << endl;
     }
@@ -3123,7 +1527,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListCoin[COIN_AZU] = buffer;
     }
-    if (!mCoinRoj.loadFromFile("imgs/coingems/CoinRoj.png")) {
+    if (!mCoinRoj.loadFromFile("imgs/coingems/CoinRoj.png", gRenderer)) {
         success = false;
         cout << "" << endl;
     }
@@ -3144,7 +1548,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListCoin[COIN_ROJ] = buffer;
     }
-    if (!mCoinGri.loadFromFile("imgs/coingems/CoinGri.png")) {
+    if (!mCoinGri.loadFromFile("imgs/coingems/CoinGri.png", gRenderer)) {
         success = false;
         cout << "" << endl;
     }
@@ -3165,7 +1569,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListCoin[COIN_GRI] = buffer;
     }
-    if (!mCoinStrip.loadFromFile("imgs/coingems/CoinStrip.png")) {
+    if (!mCoinStrip.loadFromFile("imgs/coingems/CoinStrip.png", gRenderer)) {
         success = false;
         cout << "" << endl;
     }
@@ -3188,7 +1592,7 @@ void loadRandomList(bool& success) {
     }
 
     //Gems
-    if (!mMonedaD.loadFromFile("imgs/coingems/MonedaD.png")) {
+    if (!mMonedaD.loadFromFile("imgs/coingems/MonedaD.png", gRenderer)) {
         success = false;
         cout << "" << endl;
     }
@@ -3210,7 +1614,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListGems[GEMS_MONEDA_D] = buffer;
     }
-    if (!mMonedaP.loadFromFile("imgs/coingems/MonedaP.png")) {
+    if (!mMonedaP.loadFromFile("imgs/coingems/MonedaP.png", gRenderer)) {
         success = false;
         cout << "" << endl;
     }
@@ -3232,7 +1636,7 @@ void loadRandomList(bool& success) {
         buffer.setColliders(Colliders);
         randomListGems[GEMS_MONEDA_P] = buffer;
     }
-    if (!mMonedaR.loadFromFile("imgs/coingems/MonedaR.png")) {
+    if (!mMonedaR.loadFromFile("imgs/coingems/MonedaR.png", gRenderer)) {
         success = false;
         cout << "" << endl;
     }

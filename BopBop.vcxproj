@@ -120,7 +120,7 @@
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_image.lib;SDL2_mixer.lib;SDL2_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -142,7 +142,38 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="gIngameMenu.cpp" />
+    <ClCompile Include="gIntroduceMenu.cpp" />
+    <ClCompile Include="gLoseMenu.cpp" />
+    <ClCompile Include="gOptionsMenu.cpp" />
+    <ClCompile Include="gPauseMenu.cpp" />
+    <ClCompile Include="gStartMenu.cpp" />
+    <ClCompile Include="LButton.cpp" />
+    <ClCompile Include="LCountDown.cpp" />
+    <ClCompile Include="LScore.cpp" />
+    <ClCompile Include="Lsound.cpp" />
+    <ClCompile Include="LTexture.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="LTimer.cpp" />
+    <ClCompile Include="gExitMenu.cpp" />
+    <ClCompile Include="gBackground.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CommonFunction.h" />
+    <ClInclude Include="gBackground.h" />
+    <ClInclude Include="gExitMenu.h" />
+    <ClInclude Include="gIngameMenu.h" />
+    <ClInclude Include="gIntroduceMenu.h" />
+    <ClInclude Include="gLoseMenu.h" />
+    <ClInclude Include="gOptionsMenu.h" />
+    <ClInclude Include="gPauseMenu.h" />
+    <ClInclude Include="LButton.h" />
+    <ClInclude Include="LCountDown.h" />
+    <ClInclude Include="LScore.h" />
+    <ClInclude Include="LSound.h" />
+    <ClInclude Include="LTimer.h" />
+    <ClInclude Include="LTexture.h" />
+    <ClInclude Include="gStartMenu.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
