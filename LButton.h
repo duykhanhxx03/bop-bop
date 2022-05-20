@@ -1,7 +1,5 @@
 #pragma once
 #include "CommonFunction.h"
-#include "LTexture.h"
-
 class ControllerStatus {
 public:
     bool isClick;

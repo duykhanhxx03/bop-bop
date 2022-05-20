@@ -83,6 +83,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(SolutionDir)LibSdl2\SDL2_ttf-2.0.14\include;$(SolutionDir)LibSdl2\SDL2_mixer-2.0.2\include;$(SolutionDir)LibSdl2\SDL2_image-2.0.3\include;$(SolutionDir)LibSdl2\SDL2-2.0.8\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)LibSdl2\SDL2-2.0.8\lib\x64;$(SolutionDir)LibSdl2\SDL2_mixer-2.0.2\lib\x64;$(SolutionDir)LibSdl2\SDL2_image-2.0.3\lib\x64;$(SolutionDir)LibSdl2\SDL2_ttf-2.0.14\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -135,13 +137,17 @@
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_image.lib;SDL2_mixer.lib;SDL2_ttf.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CommonFunction.cpp" />
+    <ClCompile Include="Font.cpp" />
+    <ClCompile Include="gCharacter.cpp" />
     <ClCompile Include="gIngameMenu.cpp" />
     <ClCompile Include="gIntroduceMenu.cpp" />
     <ClCompile Include="gLoseMenu.cpp" />
@@ -157,10 +163,14 @@
     <ClCompile Include="LTimer.cpp" />
     <ClCompile Include="gExitMenu.cpp" />
     <ClCompile Include="gBackground.cpp" />
+    <ClCompile Include="ObstacleAndItem.cpp" />
+    <ClCompile Include="ObstacleAndItemProperties.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonFunction.h" />
+    <ClInclude Include="Font.h" />
     <ClInclude Include="gBackground.h" />
+    <ClInclude Include="gCharacter.h" />
     <ClInclude Include="gExitMenu.h" />
     <ClInclude Include="gIngameMenu.h" />
     <ClInclude Include="gIntroduceMenu.h" />
@@ -174,6 +184,15 @@
     <ClInclude Include="LTimer.h" />
     <ClInclude Include="LTexture.h" />
     <ClInclude Include="gStartMenu.h" />
+    <ClInclude Include="ObstacleAndItem.h" />
+    <ClInclude Include="ObstacleAndItemProperties.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="BopBop.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="imgs\bopbop.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,8 +1,5 @@
 #pragma once
-#include "LTexture.h"
-#include "Ltimer.h"
 #include "CommonFunction.h"
-#include <sstream>
 class LCountDown {
 private:
     int count;

@@ -1,6 +1,21 @@
 #pragma once
+#include <iostream>
+#include <ctime>
+#include <cstdlib>
+#include <fstream>
+#include <SDL.h>
 #include <SDL_ttf.h>
+#include <SDL_image.h>
 #include <SDL_mixer.h>
+#include <string>
+#include <vector>
+#include <SDL_ttf.h>
+#include <sstream>
+#include <math.h>
+#include "LTimer.h"
+#include "LTexture.h"
+#include "LSound.h"
+#include "LScore.h"
 //Screen dimension
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
@@ -64,34 +79,6 @@ enum MENU_STATUS {
     MENU_STATUS_EXIT,
     MENU_STATUS_INTRODUCE
 };
-enum INDEX_LIST_OBSTACLES {
-    SHROOM_BIG,
-    SHROOM_MEDIUM,
-    SHROOM_SMALL,
-    PLANTRED_BIG,
-    PLANTRED_MEDIUM,
-    PLANTRED_SMALL,
-    PLANTVIOLET_BIG,
-    PLANTVIOLET_MEDIUM,
-    PLANTVIOLET_SMALL,
-    BEE_MALE,
-    BEE_FEMALE,
-    OBSTACLES_TOTAL
-};
-enum INDEX_LIST_GEMS {
-    GEMS_MONEDA_D,
-    GEMS_MONEDA_P,
-    GEMS_MONEDA_R,
-    GEMS_TOTAL
-};
-enum INDEX_LIST_COIN {
-    COIN_AMA,
-    COIN_AZU,
-    COIN_ROJ,
-    COIN_GRI,
-    COIN_STRIP,
-    COIN_TOTAL
-};
 enum Otter_Sheet_Height {
     RUN_SHEET_HEIGHT = 160,
     JUMP_SHEET_HEIGHT = 160,
@@ -118,4 +105,14 @@ enum LButtonSprite
     BUTTON_SPRITE_TOTAL
 };
 
+static MENU_STATUS menuStatus = MENU_STATUS_START;
+static MENU_STATUS menuPre = menuStatus;
+static GAME_STATUS gameStatus = GAME_STATUS_IDLE;
+
+bool init();
+bool loadMedia();
+void clode();
+
 void handle(const TO_DO& todo, const double& v = MIX_MAX_VOLUME);
+bool checkCollision(vector<SDL_Rect>& a, vector<SDL_Rect>& b);
+int generateRandomNumber(const int min, const int max);

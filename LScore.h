@@ -1,19 +1,17 @@
 #pragma once
-#include "LTexture.h"
-#include "LTimer.h"
 #include "CommonFunction.h"
-#include <fstream>
-#include <sstream>
 class LScore {
 private:
     SDL_Color textColor = { 255, 255, 255, 255 };
     //Text render
     LTexture gCurrentScoreTexture;
     LTexture gHighScoreTexture;
+    LTexture gScoreAddedTexture;
 
     //Current time start time
     Uint32 startTime = 0;
     stringstream timeText;
+    stringstream timeTextScoreAdded;
     LTimer gTimer;
 
     //ishighscore
