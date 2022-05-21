@@ -151,7 +151,6 @@ void mainGameProcess();
 
 int main(int argc, char* argv[])
 {
-
     srand(time(NULL));
     if (!init()) {
         cout << "Failed to initialize! " << endl;
@@ -165,9 +164,9 @@ int main(int argc, char* argv[])
         {
             SDL_Event e;
             gSound.PlayMusic();
-
             while (!quit)
             {
+                
                 while (SDL_PollEvent(&e) != 0) {
                     if (e.type == SDL_QUIT) {
                         quit = true;
@@ -211,7 +210,7 @@ int main(int argc, char* argv[])
                 }
                 SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
                 SDL_RenderClear(gRenderer);
-                
+
                 mainGameProcess();
 
                 if (gameStatus == GAME_STATUS_PLAYING || gameStatus == GAME_STATUS_PAUSED || gameStatus == GAME_STATUS_LOSE) {

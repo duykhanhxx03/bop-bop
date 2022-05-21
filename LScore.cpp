@@ -95,5 +95,6 @@ Uint32 LScore::getHighScore() const {
 }
 int LScore::getScore() {
     shiftScore();
-    return score+scoreAdded;
+    if (gTimer.isPaused()) return score + scoreAdded;
+    return score;
 }
