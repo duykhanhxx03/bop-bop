@@ -38,28 +38,28 @@ Game được viết bằng ngôn ngữ C++ và sử dụng thư viện SDL2
 
   - B1: Nhấp đúp vào file cài đặt (BopBopx64Setup.exe hoặc BopBopx86Setup.exe)
 
-    ![image-20220522104420093](C:\Users\TranDuyKhanh\AppData\Roaming\Typora\typora-user-images\image-20220522104420093.png)
+    ![image-20220522104420093](https://user-images.githubusercontent.com/99308937/169700614-f789bb88-3f11-45e4-9ca2-6e8af5bbc246.png)
 
     Xuất hiện hộp thoại User Account Control: Bấm Yes
 
   - B2: Hộp thoại Setup xuất hiện
 
-    ![image-20220522105748485](C:\Users\TranDuyKhanh\AppData\Roaming\Typora\typora-user-images\image-20220522105748485.png)
+    ![image-20220522105748485](https://user-images.githubusercontent.com/99308937/169700671-94b550bc-1ba0-4fef-a034-ea8843f853d6.png)
 
     - Tick vào ô Creata a desktop shortcut để tạo đường dẫn ra ngoài màn hình
     - Ấn Next để đi đến trang tiếp theo
 
   - B3: Cài đặt
 
-    ![image-20220522105928146](C:\Users\TranDuyKhanh\AppData\Roaming\Typora\typora-user-images\image-20220522105928146.png)
+    ![image-20220522105928146](https://user-images.githubusercontent.com/99308937/169700693-84a19504-f23e-4d2c-bb06-0005e38772d2.png)
 
     - Nhấn Install để tiến hành cài đặt
 
-    ![image-20220522110101587](C:\Users\TranDuyKhanh\AppData\Roaming\Typora\typora-user-images\image-20220522110101587.png)
+    ![image-20220522110101587]([C:\Users\TranDuyKhanh\AppData\Roaming\Typora\typora-user-images\image-20220522110101587.png](https://user-images.githubusercontent.com/99308937/169700719-6f92fa08-4e7f-4421-b184-e9e47dc831e0.png))
 
     - Chờ cho quá trình cài đặt được hoàn tất
 
-    ![image-20220522110255583](C:\Users\TranDuyKhanh\AppData\Roaming\Typora\typora-user-images\image-20220522110255583.png)
+    ![image-20220522110255583]([C:\Users\TranDuyKhanh\AppData\Roaming\Typora\typora-user-images\image-20220522110255583.png](https://user-images.githubusercontent.com/99308937/169700741-bb05fff9-8fdc-4cc7-b998-1ac5523f2711.png))
 
     - Tick Launch Bop!Bop! để chạy game ngay sau khi đóng hộp thoại
     - Nhấn Finish để hoàn tất việc cài đặt.
