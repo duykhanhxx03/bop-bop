@@ -55,11 +55,11 @@ Game được viết bằng ngôn ngữ C++ và sử dụng thư viện SDL2
 
     - Nhấn Install để tiến hành cài đặt
 
-    ![image-20220522110101587]([C:\Users\TranDuyKhanh\AppData\Roaming\Typora\typora-user-images\image-20220522110101587.png](https://user-images.githubusercontent.com/99308937/169700719-6f92fa08-4e7f-4421-b184-e9e47dc831e0.png))
+    ![image-20220522110101587](https://user-images.githubusercontent.com/99308937/169700772-bc268c4a-94c4-4d5b-ae11-e2faa3e44d2f.png)
 
     - Chờ cho quá trình cài đặt được hoàn tất
 
-    ![image-20220522110255583]([C:\Users\TranDuyKhanh\AppData\Roaming\Typora\typora-user-images\image-20220522110255583.png](https://user-images.githubusercontent.com/99308937/169700741-bb05fff9-8fdc-4cc7-b998-1ac5523f2711.png))
+    ![image-20220522110255583](https://user-images.githubusercontent.com/99308937/169700741-bb05fff9-8fdc-4cc7-b998-1ac5523f2711.png)
 
     - Tick Launch Bop!Bop! để chạy game ngay sau khi đóng hộp thoại
     - Nhấn Finish để hoàn tất việc cài đặt.
