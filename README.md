@@ -1,4 +1,4 @@
-# <img src="https://user-images.githubusercontent.com/99308937/169700888-0b9be737-f44d-49e4-8567-24cacd0b4570.png" alt="otter" style="zoom:100%;" />BOP!BOP! Project
+# <img src="https://user-images.githubusercontent.com/99308937/169700974-bd51151e-11b6-42b8-a3dc-adf34884f652.png" alt="otter" style="zoom:100%;" />BOP!BOP! Project
 
 > Trần Duy Khánh: 21020769
 >
