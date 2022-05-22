@@ -2,17 +2,51 @@
 
 //Score
 void LScore::loadMedia(bool& success, SDL_Renderer* gRenderer, TTF_Font* Font) {
-    Uint32 savedScore;
-    fstream savedScoreInfo("score/score.txt", ios::in);
-    if (!savedScoreInfo.is_open()) {
+    ifstream savedscoreinfo("score/score.txt", ios::in);
+    if (!savedscoreinfo.is_open()) {
         success = false;
     }
     else
     {
-        savedScoreInfo >> savedScore;
+        savedscoreinfo >> savedScore;
         setScoreFromSaved(savedScore,gRenderer,Font);
-        savedScoreInfo.close();
+        savedscoreinfo.close();
     }
+    //Open file for reading in binary
+    //SDL_RWops* file = SDL_RWFromFile("score/score.bin", "r+b");
+
+    ////File does not exist
+    //if (file == NULL)
+    //{
+    //    cout<<"Warning: Unable to open file! SDL Error: %s\n"<< SDL_GetError();
+
+    //    //Create file for writing
+    //    file = SDL_RWFromFile("score/score.bin", "w+b");
+    //    if (file != NULL)
+    //    {
+    //        cout<<"New file created!\n";
+
+    //        savedScore = 0;
+    //        SDL_RWwrite(file, &savedScore, sizeof(int), 1);
+    //        setScoreFromSaved(savedScore, gRenderer, Font);
+    //        //Close file handler
+    //        SDL_RWclose(file);
+    //    }
+    //    else
+    //    {
+    //        cout<<"Error: Unable to create file! SDL Error: %s\n"<< SDL_GetError();
+    //        success = false;
+    //    }
+    //}
+    ////File exists
+    //else
+    //{
+    //    SDL_RWread(file, &savedScore, sizeof(int), 1);
+    //    setScoreFromSaved(savedScore, gRenderer, Font);
+
+    //    //Close file handler
+    //    SDL_RWclose(file);
+    //}
 }
 void LScore::addScore(const Uint32& sc) {
     scoreAdded += sc;

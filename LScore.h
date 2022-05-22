@@ -17,8 +17,8 @@ private:
     //ishighscore
     bool isHighSc = false;
     Uint32 score = 0;
-    Uint32 savedScore = 0;
     Uint32 scoreAdded = 0;
+    int savedScore;
 public:
     void process();
     void pause();

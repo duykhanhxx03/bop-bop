@@ -117,15 +117,59 @@ bool loadMedia() {
 }
 void close() {
     //Writing sound infomation
-    fstream soundSavedInfo("sound/VOLUMEINFO.txt", ios::out);
+    ofstream soundSavedInfo("sound/VOLUMEINFO.txt", ios::out);
     soundSavedInfo << gSound.getVolumeMusic() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT << " "
         << gSound.getVolumeChunk() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT ;
     soundSavedInfo.close();
 
     //Writting high score infomation
-    fstream savedScoreInfo("score/score.txt", ios::out);
-    savedScoreInfo<< SCORE.getHighScore();
+    ofstream savedScoreInfo("score/score.txt", ios::out);
+    savedScoreInfo << SCORE.getHighScore();
     savedScoreInfo.close();
+
+    //double savedVolumeMusic = gSound.getVolumeMusic() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT;
+    //double savedVolumeChunk = gSound.getVolumeChunk() * (THRESHOLD_CONTROLER_RIGHT - THRESHOLD_CONTROLER_LEFT - 36) * (double(1) / 128) + THRESHOLD_CONTROLER_LEFT;
+
+    //SDL_RWops* fileVolumeMusic = SDL_RWFromFile("sound/volumemusic.bin", "r+b");
+    //if (fileVolumeMusic != NULL)
+    //{
+    //    //Save data
+    //    SDL_RWwrite(fileVolumeMusic, &savedVolumeMusic, sizeof(double), 1);
+    //    //Close file handler
+    //    SDL_RWclose(fileVolumeMusic);
+    //}
+    //else
+    //{
+    //    cout << "Error: Unable to save file! %s\n" << SDL_GetError();
+    //}
+
+    //SDL_RWops* fileVolumeChunk = SDL_RWFromFile("sound/volumechunk.bin", "r+b");
+    //if (fileVolumeChunk != NULL)
+    //{
+    //    //Save data
+    //    SDL_RWwrite(fileVolumeChunk, &savedVolumeChunk, sizeof(double), 1);
+    //    //Close file handler
+    //    SDL_RWclose(fileVolumeChunk);
+    //}
+    //else
+    //{
+    //    cout << "Error: Unable to save file! %s\n" << SDL_GetError();
+    //}
+
+    ////Open data for writing
+    //int savedScore = SCORE.getHighScore();
+    //SDL_RWops* fileScore = SDL_RWFromFile("score/score.bin", "w+b");
+    //if (fileScore != NULL)
+    //{
+    //    //Save data
+    //    SDL_RWwrite(fileScore, &savedScore, sizeof(int), 1);
+    //    //Close file handler
+    //    SDL_RWclose(fileScore);
+    //}
+    //else
+    //{
+    //    cout << "Error: Unable to save file! %s\n" << SDL_GetError();
+    //}
 
     //Free font
     TTF_CloseFont(Font);

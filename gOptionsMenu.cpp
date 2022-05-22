@@ -22,9 +22,72 @@ void gOptionsMenu::setPositionX_SFX(const int& x) {
 }
 void gOptionsMenu::loadMedia(bool& success,SDL_Renderer* gRenderer, LSound &gSound) {
     double savedVolumeChunk, savedVolumeMusic;
-    fstream soundSavedInfo("sound/VOLUMEINFO.txt", ios::in);
+    fstream soundSavedInfo("sound/volumeinfo.txt", ios::in);
     soundSavedInfo >> savedVolumeMusic >> savedVolumeChunk;
     soundSavedInfo.close();
+
+    //SDL_RWops* fileVolumeMusic = SDL_RWFromFile("sound/volumemusic.bin", "r+b");
+    ////File does not exist
+    //if (fileVolumeMusic == NULL)
+    //{
+    //    cout << "Warning: Unable to open file! SDL Error: %s\n" << SDL_GetError();
+    //    //Create file for writing
+    //    fileVolumeMusic = SDL_RWFromFile("sound/volumemusic.bin", "w+b");
+    //    if (fileVolumeMusic != NULL)
+    //    {
+    //        cout << "New file created!\n";
+
+    //        savedVolumeMusic = 814;
+    //        SDL_RWwrite(fileVolumeMusic, &savedVolumeMusic, sizeof(double), 1);
+    //        //Close file handler
+    //        SDL_RWclose(fileVolumeMusic);
+    //    }
+    //    else
+    //    {
+    //        cout << "Error: Unable to create file! SDL Error: %s\n" << SDL_GetError();
+    //        success = false;
+    //    }
+    //}
+    ////File exists
+    //else
+    //{
+    //    //Load data
+    //    SDL_RWread(fileVolumeMusic, &savedVolumeMusic, sizeof(double), 1);
+    //    //Close file handler
+    //    SDL_RWclose(fileVolumeMusic);
+    //}
+
+    //SDL_RWops* fileVolumeChunk = SDL_RWFromFile("sound/volumechunk.bin", "r+b");
+    ////File does not exist
+    //if (fileVolumeChunk == NULL)
+    //{
+    //    cout << "Warning: Unable to open file! SDL Error: %s\n" << SDL_GetError();
+    //    //Create file for writing
+    //    fileVolumeChunk = SDL_RWFromFile("sound/volumechunk.bin", "w+b");
+    //    if (fileVolumeChunk != NULL)
+    //    {
+    //        cout << "New file created!\n";
+
+    //        savedVolumeChunk = 814;
+    //        SDL_RWwrite(fileVolumeChunk, &savedVolumeChunk, sizeof(double), 1);
+    //        //Close file handler
+    //        SDL_RWclose(fileVolumeChunk);
+    //    }
+    //    else
+    //    {
+    //        cout << "Error: Unable to create file! SDL Error: %s\n" << SDL_GetError();
+    //        success = false;
+    //    }
+    //}
+    ////File exists
+    //else
+    //{
+    //    //Load data
+    //    SDL_RWread(fileVolumeChunk, &savedVolumeChunk, sizeof(double), 1);
+    //    //Close file handler
+    //    SDL_RWclose(fileVolumeChunk);
+    //}
+
     if (!OptionsMenuBox.loadFromFile("imgs/menu/options/optionsmenubox.png", gRenderer)) {
         success = false;
         cout << "Load OptionsMenuBox failed! " << endl;
