@@ -30,7 +30,7 @@ Game được viết bằng ngôn ngữ C++ và sử dụng thư viện SDL2
 
 ## CÁCH CÀI ĐẶT:
 
-##### Tải xuống tại đây: [Download](https://github.com/duykhanhxx03/Bopbop/releases/tag/v1.0.0)
+##### Tải xuống tại đây: [Download](https://github.com/duykhanhxx03/Bopbop/releases/tag/v1.0.1)
 
 ##### Cách kiểm tra hệ thống là x64(64bit) hay x86(32bit): [Truy cập](https://support.microsoft.com/en-us/windows/32-bit-and-64-bit-windows-frequently-asked-questions-c6ca9541-8dce-4d48-0415-94a3faa2e13d)
 
