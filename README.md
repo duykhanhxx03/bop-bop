@@ -1,4 +1,4 @@
-# <img src="C:\Users\TranDuyKhanh\Downloads\otter.png" alt="otter" style="zoom:10%;" />BOP!BOP! Project
+# <img src="https://user-images.githubusercontent.com/99308937/169700525-8df4538f-4c0c-42ce-8aa6-3fcb2e5d413a.png" alt="otter" style="zoom:10%;" />BOP!BOP! Project
 
 > Trần Duy Khánh: 21020769
 >
