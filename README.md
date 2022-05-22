@@ -30,6 +30,8 @@ Game được viết bằng ngôn ngữ C++ và sử dụng thư viện SDL2
 
 ## CÁCH CÀI ĐẶT:
 
+##### Tải xuống tại đây: [Download](https://github.com/duykhanhxx03/Bopbop/releases/tag/v1.0.0)
+
 ##### Cách kiểm tra hệ thống là x64(64bit) hay x86(32bit): [Truy cập](https://support.microsoft.com/en-us/windows/32-bit-and-64-bit-windows-frequently-asked-questions-c6ca9541-8dce-4d48-0415-94a3faa2e13d)
 
 ##### Tuỳ thuộc vào loại của hệ thống mà chọn file cài đặt một cách chính xác, trong đó:
@@ -40,7 +42,7 @@ Game được viết bằng ngôn ngữ C++ và sử dụng thư viện SDL2
 
     ![image-20220522104420093](https://user-images.githubusercontent.com/99308937/169700614-f789bb88-3f11-45e4-9ca2-6e8af5bbc246.png)
 
-    Xuất hiện hộp thoại User Account Control: Bấm Yes
+    - Xuất hiện hộp thoại User Account Control: Bấm Yes
 
   - B2: Hộp thoại Setup xuất hiện
 
@@ -142,7 +144,7 @@ Vì đã giúp em hoàn thành bài tập này.
 
 **Also thanks to:**
 
-- [**Lazy Foo' Productions**](https://lazyfoo.net/tutorials/SDL)
+[LAZYFOO' Productions]: https://lazyfoo.net/tutorials/SDL
 
 #### Resources:
 
