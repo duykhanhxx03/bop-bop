@@ -7,6 +7,7 @@ private:
     LTexture StartMenuBox;
     LTexture ButtonTexture;
     LTexture IntroduceButtonTexture;
+    LTexture CreditTexture;
 
     SDL_Color textColor = { 255,255,255,255 };
     LTexture GameTitleText;
@@ -26,6 +27,6 @@ public:
     gStartMenu() {};
     void handleEvent(SDL_Event& e,MENU_STATUS& menuStatus, MENU_STATUS& menuPre);
     void show(SDL_Renderer* gRenderer, TTF_Font* Font);
-    void loadMedia(bool& success, SDL_Renderer* gRenderer, TTF_Font* Font);
+    void loadMedia(bool& success, SDL_Renderer* gRenderer, TTF_Font* Font, TTF_Font* FontBigSize);
 };
 static gStartMenu START_MENU;

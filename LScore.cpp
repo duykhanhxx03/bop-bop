@@ -67,7 +67,7 @@ void LScore::updateHighScore(SDL_Renderer* gRenderer, TTF_Font* Font) {
             cout << "Unable to render savedtime texture!" << endl;
         }
     }
-    else if (score < savedScore) isHighSc = false;
+    else if (score + scoreAdded < savedScore) isHighSc = false;
 }
 void LScore::setScoreFromSaved(const Uint32& sc, SDL_Renderer* gRenderer, TTF_Font* Font) {
     savedScore = sc;
@@ -91,12 +91,14 @@ void LScore::pause() {
 }
 void LScore::start() {
     scoreAdded = 0;
+    isHighSc = 0;
     timeTextScoreAdded.str("");
     if (!gTimer.isStarted()) gTimer.start();
     
 }
 void LScore::reStart() {
     scoreAdded = 0;
+    isHighSc = 0;
     timeTextScoreAdded.str("");
     if (gTimer.isStarted()) gTimer.start();
 }

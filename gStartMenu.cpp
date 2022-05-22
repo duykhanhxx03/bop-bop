@@ -9,6 +9,8 @@ void gStartMenu::handleEvent(SDL_Event& e, MENU_STATUS& menuStatus, MENU_STATUS&
 void gStartMenu::show(SDL_Renderer* gRenderer, TTF_Font* Font) {
     GameTitleText.render(gRenderer, 200, 150);
     GameTitleText.render(gRenderer, 300, 300);
+
+    CreditTexture.render(gRenderer, 10, 20);
     //Render start menu box
     StartMenuBox.render(gRenderer, 820, (SCREEN_HEIGHT - StartMenuBox.getHeight()) / 2);
     //Render button
@@ -17,7 +19,7 @@ void gStartMenu::show(SDL_Renderer* gRenderer, TTF_Font* Font) {
     Options.render(ButtonTexture, OptionsSpriteClips, gRenderer);
     Exit.render(ButtonTexture, ExitSpriteClips, gRenderer);
 }
-void gStartMenu::loadMedia(bool& success, SDL_Renderer* gRenderer, TTF_Font* Font) {
+void gStartMenu::loadMedia(bool& success, SDL_Renderer* gRenderer, TTF_Font* Font, TTF_Font* FontBigSize){
     if (!ButtonTexture.loadFromFile("imgs/menu/start/start_menu_button_sheet.png", gRenderer)) {
         cout << "Load gStartMenu failed! " << endl;
         success = false;
@@ -53,11 +55,12 @@ void gStartMenu::loadMedia(bool& success, SDL_Renderer* gRenderer, TTF_Font* Fon
         IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_OVER_MOTION] = { 0,116,110,116 };
         IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_DOWN] = { 0,232,110,116 };
         IntroduceSpriteClips[BUTTON_SPRITE_MOUSE_UP] = { 0,348,110,116 };
-        Introduce.setPosition(10, 10);
+        Introduce.setPosition(10, 595);
     }
     if (!StartMenuBox.loadFromFile("imgs/menu/start/startmenubox.png", gRenderer)) {
         cout << "Load gStartMenu background failed! " << endl;
         success = false;
     }
-    GameTitleText.loadFromRenderedText(gRenderer, "BOP!", textColor, Font);
+    GameTitleText.loadFromRenderedText(gRenderer, "BOP!", textColor, FontBigSize);
+    CreditTexture.loadFromRenderedText(gRenderer, "@duykhanhxx03", textColor, Font);
 }

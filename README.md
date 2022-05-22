@@ -128,11 +128,11 @@ Game được viết bằng ngôn ngữ C++ và sử dụng thư viện SDL2
 
 ## KẾT LUẬN
 
-Hướng phát triển: Em sẽ cải tiến thêm các tuỳ chọn về map, nhân vật, âm thanh, bảng xếp hạng có tên người chơi trong tương lai và cũng nghiên cứu cách khắc phục sự thiếu xót của SDL như Scrolling ảnh, SDL_Delay chỉ nhận được số mili giây nguyên (rất khó cho việc Capping FPS).
+Hướng phát triển: Em sẽ cải tiến thêm các tuỳ chọn về map, nhân vật, âm thanh, bảng xếp hạng có tên người chơi trong tương lai và cũng nghiên cứu cách khắc phục sự thiếu xót của SDL như Scrolling ảnh bằng cách dùng OPENGL, SDL_Delay chỉ nhận được số mili giây nguyên (rất khó cho việc Capping FPS).
 
 Qua thời gian làm game, em đã cải thiện được một số kĩ năng về lập trình, tìm kiếm thông tin, giải quyết vấn đề và về khả năng đọc tài liệu tiếng Anh. Không những thế, nó còn giúp em nắm chính xác cách hoạt động và cài đặt đối tượng của một chương trình, làm nền tảng vững chắc cho em sau này khi sử dụng các game engine như Unreal, Unity, Godot, Cocos2d-x .v.v.
 
-# CREDIT
+## CREDIT
 
 **Special thanks to:**
 
@@ -144,7 +144,7 @@ Vì đã giúp em hoàn thành bài tập này.
 
 **Also thanks to:**
 
-[LAZYFOO' Productions]: https://lazyfoo.net/tutorials/SDL
+[Lazy Foo' Productions](https://lazyfoo.net/tutorials/SDL)
 
 #### Resources:
 

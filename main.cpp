@@ -89,7 +89,7 @@ bool init() {
 bool loadMedia() {
     bool success = true;
     //Font
-    loadFont(success, Font, FontMedSize, FontBigSize);
+    loadFont(success, Font, FontSmallSize, FontMedSize, FontBigSize);
     //Otter
     Otter.loadMedia(success, gRenderer);
     //Sound
@@ -97,7 +97,7 @@ bool loadMedia() {
     //Score
     SCORE.loadMedia(success,gRenderer,Font);
     //START MENU
-    START_MENU.loadMedia(success, gRenderer, FontBigSize);
+    START_MENU.loadMedia(success, gRenderer, FontSmallSize ,FontBigSize);
     //PAUSE MENU
     PAUSE_MENU.loadMedia(success,gRenderer);
     //OPTIONS MENU
@@ -178,6 +178,8 @@ void close() {
     FontMedSize = NULL;
     TTF_CloseFont(FontBigSize);
     FontBigSize = NULL;
+    TTF_CloseFont(FontSmallSize);
+    FontSmallSize = NULL;
 
     SDL_DestroyRenderer(gRenderer);
     SDL_DestroyWindow(gWindow);

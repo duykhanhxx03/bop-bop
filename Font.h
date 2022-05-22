@@ -6,5 +6,6 @@ using namespace std;
 static TTF_Font* Font = NULL;
 static TTF_Font* FontBigSize = NULL;
 static TTF_Font* FontMedSize = NULL;
-void loadFont(bool& success, TTF_Font*& Font, TTF_Font*& FontMedSize, TTF_Font*& FontBigSize);
+static TTF_Font* FontSmallSize = NULL;
+void loadFont(bool& success, TTF_Font*& Font, TTF_Font*& FontSmallSize, TTF_Font*& FontMedSize, TTF_Font*& FontBigSize);
 
