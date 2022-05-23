@@ -6,6 +6,8 @@
 >
 > @duykhanhxx03
 
+![Screenshot (33)](https://user-images.githubusercontent.com/99308937/169743225-289b7db7-db26-447f-bb99-35684a2cda1d.png)
+
 ## **GIỚI THIỆU CHUNG:**
 
 Bop!Bop! được hoàn thành dựa trên lối chơi của Google Dinosaur nhưng đã bổ sung kịch bản chơi, đồ hoạ và âm thanh sao cho sinh động hơn.
@@ -30,7 +32,7 @@ Game được viết bằng ngôn ngữ C++ và sử dụng thư viện SDL2
 
 ## CÁCH CÀI ĐẶT:
 
-##### Tải xuống tại đây: [Download](https://github.com/duykhanhxx03/Bopbop/releases/tag/v1.0.1)
+##### Tải xuống tại đây: [Download](https://github.com/duykhanhxx03/Bopbop/releases/tag/v1.0.0)
 
 ##### Cách kiểm tra hệ thống là x64(64bit) hay x86(32bit): [Truy cập](https://support.microsoft.com/en-us/windows/32-bit-and-64-bit-windows-frequently-asked-questions-c6ca9541-8dce-4d48-0415-94a3faa2e13d)
 
@@ -87,8 +89,9 @@ Game được viết bằng ngôn ngữ C++ và sử dụng thư viện SDL2
   - B2: Setting -> System -> Display -> Advanced display settings
   - B3: Tại mục Refresh Rate, chọn 60hz
 
-
 ## MÔ TẢ CHỨC NĂNG
+
+**Video mô tả chức năng: [Truy cập](https://www.youtube.com/watch?v=K8YpaTSyeEE)**
 
 - **Có hệ thống menu đa dạng:**
   - Menu bắt đầu
